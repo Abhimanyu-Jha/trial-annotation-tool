@@ -608,7 +608,7 @@ export default function AnnotatePage() {
 
                             <div>
                               <label className="text-xs font-medium text-muted-foreground">Trial Part</label>
-                              <Select value={annotationPart} onValueChange={(value: string) => setAnnotationPart(value)}>
+                              <Select value={annotationPart} onValueChange={(value: string) => setAnnotationPart(value as "Trial Part 1" | "Trial Part 2" | "Trial Part 3")}>
                                 <SelectTrigger className="h-8">
                                   <SelectValue />
                                 </SelectTrigger>
