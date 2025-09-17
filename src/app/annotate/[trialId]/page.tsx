@@ -105,7 +105,7 @@ export default function AnnotatePage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentTime, duration, isCreatingAnnotation, playerReady, seekTo, startAnnotation, togglePlay]);
+  }, [currentTime, duration, isCreatingAnnotation, playerReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     // Force video to load when component mounts
