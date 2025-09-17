@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { getTrialsWithStatus, formatDuration, formatDate } from '@/lib/dummy-data';
 import { TrialWithStatus } from '@/lib/types';
 import { Search, Play, ChevronDown } from 'lucide-react';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 export default function Dashboard() {
   const [trials] = useState<TrialWithStatus[]>(getTrialsWithStatus());
@@ -40,8 +41,13 @@ export default function Dashboard() {
     <div className="min-h-screen bg-background">
       <header className="border-b">
         <div className="container mx-auto px-4 py-4">
-          <h1 className="text-3xl font-bold">Video Trial Annotation Tool</h1>
-          <p className="text-muted-foreground mt-1">Manage and annotate trial class videos</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">Video Trial Annotation Tool</h1>
+              <p className="text-muted-foreground mt-1">Manage and annotate trial class videos</p>
+            </div>
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 

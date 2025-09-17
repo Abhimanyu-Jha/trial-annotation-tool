@@ -15,6 +15,7 @@ import {
   formatDate
 } from '@/lib/dummy-data';
 import { Annotation } from '@/lib/types';
+import { ThemeToggle } from '@/components/theme-toggle';
 import {
   ArrowLeft,
   Play,
@@ -327,9 +328,12 @@ export default function AnnotatePage() {
               </div>
             </div>
           </div>
-          <div className="text-right">
-            <div className="text-sm text-muted-foreground">Duration</div>
-            <div className="font-mono">{formatDuration(trial.duration)}</div>
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <div className="text-sm text-muted-foreground">Duration</div>
+              <div className="font-mono">{formatDuration(trial.duration)}</div>
+            </div>
+            <ThemeToggle />
           </div>
         </div>
       </header>
