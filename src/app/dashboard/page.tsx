@@ -54,7 +54,7 @@ export default function Dashboard() {
               <div>
                 <CardTitle>Trial Videos ({filteredTrials.length})</CardTitle>
                 <CardDescription>
-                  Click "Annotate" to start reviewing and annotating a trial video
+                  Click &quot;Annotate&quot; to start reviewing and annotating a trial video
                 </CardDescription>
               </div>
               <div className="relative w-full sm:w-80">

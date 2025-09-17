@@ -3,11 +3,10 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import {
   dummyTrials,
   dummyTranscripts,
@@ -15,7 +14,7 @@ import {
   formatDuration,
   formatDate
 } from '@/lib/dummy-data';
-import { Trial, Transcript, Annotation } from '@/lib/types';
+import { Annotation } from '@/lib/types';
 import {
   ArrowLeft,
   Play,
@@ -161,7 +160,7 @@ export default function AnnotatePage() {
     setPlayerReady(true);
   };
 
-  const handleError = (error: any) => {
+  const handleError = (error: unknown) => {
     console.error('Video error:', error);
     console.log('Video element:', playerRef.current);
   };
@@ -609,7 +608,7 @@ export default function AnnotatePage() {
 
                             <div>
                               <label className="text-xs font-medium text-muted-foreground">Trial Part</label>
-                              <Select value={annotationPart} onValueChange={(value: any) => setAnnotationPart(value)}>
+                              <Select value={annotationPart} onValueChange={(value: string) => setAnnotationPart(value)}>
                                 <SelectTrigger className="h-8">
                                   <SelectValue />
                                 </SelectTrigger>
@@ -661,7 +660,7 @@ export default function AnnotatePage() {
                       {/* Existing Annotations */}
                       {annotations.length === 0 && !isCreatingAnnotation ? (
                         <p className="text-muted-foreground text-sm text-center py-4">
-                          No annotations yet. Click "Add Note" to create one.
+                          No annotations yet. Click &quot;Add Note&quot; to create one.
                         </p>
                       ) : (
                         annotations.map((annotation) => (
