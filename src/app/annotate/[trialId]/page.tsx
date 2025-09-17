@@ -105,7 +105,7 @@ export default function AnnotatePage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentTime, duration, isCreatingAnnotation, playerReady]);
+  }, [currentTime, duration, isCreatingAnnotation, playerReady, seekTo, startAnnotation, togglePlay]);
 
   useEffect(() => {
     // Force video to load when component mounts
@@ -224,7 +224,7 @@ export default function AnnotatePage() {
         end: annotationEnd || undefined
       },
       content: annotationContent,
-      transcriptSnippet: getTranscriptSnippet(annotationStart, annotationEnd),
+      transcriptSnippet: getTranscriptSnippet(annotationStart || 0, annotationEnd || undefined),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
