@@ -2,12 +2,16 @@ export interface Trial {
   trialId: string;
   videoUrl: string;
   transcriptUrl: string;
+  studentId: string;
+  studentName: string;
+  tutorId: string;
+  tutorName: string;
   grade: string;
   trialDate: string;
-  tutorId: string;
   region: 'NAM' | 'ISC' | 'ROW';
   channel: 'perf-meta' | 'organic-content' | 'BTL' | 'tutor-referral' | 'parent-referral';
   duration: number; // seconds
+  trialVersion: 'legacy' | 'v3.1' | 'v3.2';
 }
 
 export interface TranscriptSegment {

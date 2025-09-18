@@ -7,12 +7,15 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Kbd } from '@/components/ui/kbd';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   dummyTrials,
   dummyTranscripts,
   dummyAnnotations,
   formatDuration,
-  formatDate
+  formatDate,
+  dummyReviewers
 } from '@/lib/dummy-data';
 import { Annotation } from '@/lib/types';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -26,7 +29,9 @@ import {
   Trash2,
   Clock,
   Save,
-  X
+  X,
+  CornerDownLeft,
+  Edit
 } from 'lucide-react';
 // Remove next-video import as we'll use standard HTML5 video for external URLs
 
@@ -50,6 +55,11 @@ export default function AnnotatePage() {
   const [annotationContent, setAnnotationContent] = useState('');
   const [annotationPart, setAnnotationPart] = useState<'Trial Part 1' | 'Trial Part 2' | 'Trial Part 3'>('Trial Part 1');
 
+  // Editing annotation state
+  const [editingAnnotation, setEditingAnnotation] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [editPart, setEditPart] = useState<'Trial Part 1' | 'Trial Part 2' | 'Trial Part 3'>('Trial Part 1');
+
   // Ref for textarea to auto-focus
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -69,15 +79,23 @@ export default function AnnotatePage() {
 
   useEffect(() => {
     if (trial) {
-      setAnnotations(dummyAnnotations.filter(ann => ann.trialId === trialId));
+      const filteredAnnotations = dummyAnnotations.filter(ann => ann.trialId === trialId);
+      // Sort annotations chronologically by start time
+      filteredAnnotations.sort((a, b) => a.timestamp.start - b.timestamp.start);
+      setAnnotations(filteredAnnotations);
     }
   }, [trial, trialId]);
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Prevent shortcuts when typing in input fields
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+      // Prevent shortcuts when typing in input fields or when seek slider is focused
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) {
+        return;
+      }
+
+      // Check if seek slider is focused
+      if (e.target instanceof HTMLInputElement && e.target.type === 'range') {
         return;
       }
 
@@ -88,11 +106,19 @@ export default function AnnotatePage() {
           break;
         case 'ArrowLeft':
           e.preventDefault();
-          seekTo(Math.max(0, currentTime - 5));
+          if (e.shiftKey) {
+            seekTo(Math.max(0, currentTime - 1)); // 1 second with Shift
+          } else {
+            seekTo(Math.max(0, currentTime - 5)); // 5 seconds normally
+          }
           break;
         case 'ArrowRight':
           e.preventDefault();
-          seekTo(Math.min(duration, currentTime + 5));
+          if (e.shiftKey) {
+            seekTo(Math.min(duration, currentTime + 1)); // 1 second with Shift
+          } else {
+            seekTo(Math.min(duration, currentTime + 5)); // 5 seconds normally
+          }
           break;
         case 'a':
         case 'A':
@@ -101,12 +127,34 @@ export default function AnnotatePage() {
             startAnnotation();
           }
           break;
+        case 'Enter':
+          if (isCreatingAnnotation && annotationContent.trim()) {
+            e.preventDefault();
+            handleCreateAnnotation();
+          }
+          break;
+        case 'Escape':
+          e.preventDefault();
+          if (isCreatingAnnotation) {
+            resetAnnotationForm();
+          }
+          break;
+        case 'e':
+        case 'E':
+          // Only trigger if not typing in input fields
+          if (!(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement) && !(e.target instanceof HTMLSelectElement)) {
+            e.preventDefault();
+            if (isCreatingAnnotation) {
+              setEndTime();
+            }
+          }
+          break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentTime, duration, isCreatingAnnotation, playerReady]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentTime, duration, isCreatingAnnotation, playerReady, annotationContent]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     // Force video to load when component mounts
@@ -230,7 +278,12 @@ export default function AnnotatePage() {
       updatedAt: new Date().toISOString()
     };
 
-    setAnnotations(prev => [...prev, newAnnotation]);
+    setAnnotations(prev => {
+      const updatedAnnotations = [...prev, newAnnotation];
+      // Sort annotations chronologically by start time
+      updatedAnnotations.sort((a, b) => a.timestamp.start - b.timestamp.start);
+      return updatedAnnotations;
+    });
     resetAnnotationForm();
   };
 
@@ -286,6 +339,48 @@ export default function AnnotatePage() {
     setAnnotations(prev => prev.filter(ann => ann.annotationId !== annotationId));
   };
 
+  const startEditingAnnotation = (annotation: Annotation) => {
+    setEditingAnnotation(annotation.annotationId);
+    setEditContent(annotation.content);
+    setEditPart(annotation.trialPart);
+    setActiveTab('annotations');
+  };
+
+  const saveEditedAnnotation = () => {
+    if (!editingAnnotation || !editContent.trim()) return;
+
+    setAnnotations(prev => {
+      const updatedAnnotations = prev.map(ann =>
+        ann.annotationId === editingAnnotation
+          ? { ...ann, content: editContent, trialPart: editPart, updatedAt: new Date().toISOString() }
+          : ann
+      );
+      // Sort annotations chronologically by start time
+      updatedAnnotations.sort((a, b) => a.timestamp.start - b.timestamp.start);
+      return updatedAnnotations;
+    });
+    cancelEditingAnnotation();
+  };
+
+  const cancelEditingAnnotation = () => {
+    setEditingAnnotation(null);
+    setEditContent('');
+    setEditPart('Trial Part 1');
+  };
+
+  const getReviewerName = (reviewerId: string) => {
+    const reviewer = dummyReviewers.find(r => r.reviewerId === reviewerId);
+    return reviewer ? reviewer.name : 'Unknown';
+  };
+
+  const getInitials = (name: string) => {
+    const names = name.split(' ');
+    if (names.length >= 2) {
+      return (names[0][0] + names[names.length - 1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
   if (!trial) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -315,16 +410,27 @@ export default function AnnotatePage() {
               Dashboard
             </Button>
             <div>
-              <h1 className="text-2xl font-bold">{trial.trialId}</h1>
+              <h1 className="text-2xl font-bold">{trial.tutorName} / {trial.studentName} ({trial.grade})</h1>
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <span>{trial.grade}</span>
-                <span>•</span>
-                <span>{trial.tutorId}</span>
-                <span>•</span>
                 <span>{formatDate(trial.trialDate)}</span>
                 <span>•</span>
-                <Badge variant="outline">{trial.region}</Badge>
-                <Badge variant="secondary">{trial.channel}</Badge>
+                <Badge variant="outline">
+                  {trial.region === 'NAM' ? '🇺🇸' : trial.region === 'ISC' ? '🇮🇳' : '🇦🇪'} {trial.region}
+                </Badge>
+                <Badge
+                  className={
+                    trial.channel === 'perf-meta' ? 'bg-blue-100 text-blue-800 hover:bg-blue-200' :
+                    trial.channel === 'organic-content' ? 'bg-green-100 text-green-800 hover:bg-green-200' :
+                    trial.channel === 'BTL' ? 'bg-purple-100 text-purple-800 hover:bg-purple-200' :
+                    trial.channel === 'tutor-referral' ? 'bg-orange-100 text-orange-800 hover:bg-orange-200' :
+                    'bg-pink-100 text-pink-800 hover:bg-pink-200'
+                  }
+                >
+                  {trial.channel}
+                </Badge>
+                <Badge variant="secondary">
+                  {trial.trialVersion}
+                </Badge>
               </div>
             </div>
           </div>
@@ -350,7 +456,7 @@ export default function AnnotatePage() {
                     src={trial.videoUrl}
                     ref={playerRef}
                     controls={false}
-                    className="w-full h-full object-contain"
+                    className="w-full h-full object-contain cursor-pointer"
                     onTimeUpdate={handleTimeUpdate}
                     onLoadStart={handleLoadStart}
                     onLoadedData={handleLoadedData}
@@ -363,6 +469,7 @@ export default function AnnotatePage() {
                     onPlay={handlePlay}
                     onPause={handlePause}
                     onError={handleError}
+                    onClick={togglePlay}
                     preload="auto"
                     playsInline
                   />
@@ -412,6 +519,8 @@ export default function AnnotatePage() {
                         value={duration ? (currentTime / duration) * 100 : 0}
                         onChange={handleSeekChange}
                         className="absolute top-0 w-full h-full opacity-0 cursor-pointer"
+                        style={{ pointerEvents: 'none' }}
+                        tabIndex={-1}
                       />
                     </div>
                   </div>
@@ -424,6 +533,7 @@ export default function AnnotatePage() {
                         size="sm"
                         onClick={() => seekTo(Math.max(0, currentTime - 10))}
                         disabled={!playerReady}
+                        title="Seek back 10 seconds"
                       >
                         <SkipBack className="h-4 w-4" />
                       </Button>
@@ -432,6 +542,7 @@ export default function AnnotatePage() {
                         variant="outline"
                         onClick={togglePlay}
                         disabled={!playerReady}
+                        title="Play/Pause"
                       >
                         {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                       </Button>
@@ -441,6 +552,7 @@ export default function AnnotatePage() {
                         size="sm"
                         onClick={() => seekTo(Math.min(duration, currentTime + 10))}
                         disabled={!playerReady}
+                        title="Seek forward 10 seconds"
                       >
                         <SkipForward className="h-4 w-4" />
                       </Button>
@@ -461,20 +573,6 @@ export default function AnnotatePage() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          console.log('Debug - Player ready:', playerReady);
-                          console.log('Debug - Video element:', playerRef.current);
-                          console.log('Debug - Video readyState:', playerRef.current?.readyState);
-                          console.log('Debug - Video networkState:', playerRef.current?.networkState);
-                          setPlayerReady(true);
-                        }}
-                        className="flex items-center gap-2"
-                      >
-                        Debug
-                      </Button>
 
                       <Button
                         variant="outline"
@@ -482,9 +580,11 @@ export default function AnnotatePage() {
                         onClick={startAnnotation}
                         disabled={!playerReady}
                         className="flex items-center gap-2"
+                        title="Add annotation (A)"
                       >
                         <Plus className="h-4 w-4" />
                         Add Note
+                        <Kbd className="ml-1">A</Kbd>
                       </Button>
 
                       {isCreatingAnnotation && (
@@ -493,41 +593,55 @@ export default function AnnotatePage() {
                           size="sm"
                           onClick={setEndTime}
                           className="flex items-center gap-2"
+                          title="Set end time (E)"
                         >
                           <Clock className="h-4 w-4" />
                           Set End
+                          <Kbd className="ml-1">E</Kbd>
                         </Button>
                       )}
                     </div>
                   </div>
 
-                  {/* Current timestamp and transcript */}
-                  <div className="text-sm">
-                    <div className="font-mono text-muted-foreground mb-2">
-                      Current: {formatDuration(Math.floor(currentTime))}
-                    </div>
-                    {currentTranscriptSegment && (
-                      <div className="p-3 bg-muted rounded-lg">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge variant="outline" className="text-xs">
-                            {currentTranscriptSegment.speaker}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            {formatDuration(currentTranscriptSegment.startTime)} - {formatDuration(currentTranscriptSegment.endTime)}
-                          </span>
-                        </div>
-                        <p className="text-sm">{currentTranscriptSegment.text}</p>
+                  {/* Keyboard shortcuts info */}
+                  <div className="text-xs text-muted-foreground mb-4 p-3 bg-muted/30 rounded-lg">
+                    <div className="font-medium mb-2">Keyboard Shortcuts:</div>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                      <div className="flex items-center gap-2">
+                        <Kbd>Space</Kbd>
+                        <span>Play/Pause</span>
                       </div>
-                    )}
+                      <div className="flex items-center gap-2">
+                        <Kbd>A</Kbd>
+                        <span>Add Note</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Kbd>←</Kbd><Kbd>→</Kbd>
+                        <span>Seek ±5s</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Kbd>E</Kbd>
+                        <span>Set End Time</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Kbd>Shift</Kbd><Kbd>←</Kbd><Kbd>→</Kbd>
+                        <span>Seek ±1s</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Kbd>Esc</Kbd>
+                        <span>Cancel</span>
+                      </div>
+                    </div>
                   </div>
+
                 </div>
               </CardContent>
             </Card>
           </div>
 
           {/* Transcript & Annotations Panel */}
-          <div>
-            <Card>
+          <div className="h-full">
+            <Card className="h-full flex flex-col">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex border-b">
@@ -554,8 +668,8 @@ export default function AnnotatePage() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto">
+              <CardContent className="flex-1 overflow-hidden">
+                <div className="space-y-3 h-full overflow-y-auto">
                   {activeTab === 'transcript' && transcript && (
                     <>
                       {transcript.segments.map((segment, index) => (
@@ -598,13 +712,13 @@ export default function AnnotatePage() {
                             <div className="grid grid-cols-2 gap-3">
                               <div>
                                 <label className="text-xs font-medium text-muted-foreground">Start Time</label>
-                                <div className="font-mono text-sm bg-background p-2 rounded border">
+                                <div className="font-mono text-sm bg-white p-2 rounded border">
                                   {annotationStart !== null ? formatDuration(Math.floor(annotationStart)) : '--:--'}
                                 </div>
                               </div>
                               <div>
                                 <label className="text-xs font-medium text-muted-foreground">End Time</label>
-                                <div className="font-mono text-sm bg-background p-2 rounded border">
+                                <div className="font-mono text-sm bg-white p-2 rounded border">
                                   {annotationEnd !== null ? formatDuration(Math.floor(annotationEnd)) : '--:--'}
                                 </div>
                               </div>
@@ -613,7 +727,7 @@ export default function AnnotatePage() {
                             <div>
                               <label className="text-xs font-medium text-muted-foreground">Trial Part</label>
                               <Select value={annotationPart} onValueChange={(value: string) => setAnnotationPart(value as "Trial Part 1" | "Trial Part 2" | "Trial Part 3")}>
-                                <SelectTrigger className="h-8">
+                                <SelectTrigger className="h-8 bg-white">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -637,9 +751,14 @@ export default function AnnotatePage() {
                                       handleCreateAnnotation();
                                     }
                                   }
+                                  if (e.key === 'Escape') {
+                                    e.preventDefault();
+                                    resetAnnotationForm();
+                                  }
+                                  // Remove E key handling from textarea since it should only work globally when not typing
                                 }}
                                 placeholder="Enter your annotation here... (Press Enter to save, Shift+Enter for new line)"
-                                className="min-h-[80px] text-sm"
+                                className="min-h-[80px] text-sm bg-white"
                               />
                             </div>
 
@@ -649,12 +768,17 @@ export default function AnnotatePage() {
                                 onClick={handleCreateAnnotation}
                                 disabled={!annotationContent.trim()}
                                 className="flex items-center gap-2"
+                                title="Save annotation (Enter)"
                               >
                                 <Save className="h-3 w-3" />
                                 Save
+                                <Kbd className="ml-1">
+                                  <CornerDownLeft className="h-3 w-3" />
+                                </Kbd>
                               </Button>
-                              <Button variant="outline" size="sm" onClick={resetAnnotationForm}>
+                              <Button variant="outline" size="sm" onClick={resetAnnotationForm} title="Cancel (Escape)">
                                 Cancel
+                                <Kbd className="ml-1">Esc</Kbd>
                               </Button>
                             </div>
                           </div>
@@ -668,33 +792,134 @@ export default function AnnotatePage() {
                         </p>
                       ) : (
                         annotations.map((annotation) => (
-                          <div
-                            key={annotation.annotationId}
-                            className="p-3 border rounded-lg hover:bg-muted/50 cursor-pointer"
-                            onClick={() => seekTo(annotation.timestamp.start)}
-                          >
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <Badge variant="outline" className="text-xs">
-                                  {annotation.trialPart}
-                                </Badge>
-                                <span className="text-xs text-muted-foreground font-mono">
-                                  {formatDuration(annotation.timestamp.start)}
-                                  {annotation.timestamp.end && ` - ${formatDuration(annotation.timestamp.end)}`}
-                                </span>
+                          <div key={annotation.annotationId}>
+                            {editingAnnotation === annotation.annotationId ? (
+                              /* Editing Mode */
+                              <div className="p-4 border-2 border-dashed border-primary/50 rounded-lg bg-primary/5">
+                                <div className="space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <h4 className="font-medium">Editing Annotation</h4>
+                                    <Button variant="ghost" size="sm" onClick={cancelEditingAnnotation}>
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+
+                                  <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                      <label className="text-xs font-medium text-muted-foreground">Start Time</label>
+                                      <div className="font-mono text-sm bg-white p-2 rounded border">
+                                        {formatDuration(Math.floor(annotation.timestamp.start))}
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <label className="text-xs font-medium text-muted-foreground">End Time</label>
+                                      <div className="font-mono text-sm bg-white p-2 rounded border">
+                                        {annotation.timestamp.end ? formatDuration(Math.floor(annotation.timestamp.end)) : '--:--'}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <label className="text-xs font-medium text-muted-foreground">Trial Part</label>
+                                    <Select value={editPart} onValueChange={(value: string) => setEditPart(value as "Trial Part 1" | "Trial Part 2" | "Trial Part 3")}>
+                                      <SelectTrigger className="h-8 bg-white">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="Trial Part 1">Trial Part 1</SelectItem>
+                                        <SelectItem value="Trial Part 2">Trial Part 2</SelectItem>
+                                        <SelectItem value="Trial Part 3">Trial Part 3</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+
+                                  <div>
+                                    <label className="text-xs font-medium text-muted-foreground">Content</label>
+                                    <Textarea
+                                      value={editContent}
+                                      onChange={(e) => setEditContent(e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                          e.preventDefault();
+                                          if (editContent.trim()) {
+                                            saveEditedAnnotation();
+                                          }
+                                        }
+                                        if (e.key === 'Escape') {
+                                          e.preventDefault();
+                                          cancelEditingAnnotation();
+                                        }
+                                      }}
+                                      placeholder="Enter your annotation here..."
+                                      className="min-h-[80px] text-sm bg-white"
+                                    />
+                                  </div>
+
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      onClick={saveEditedAnnotation}
+                                      disabled={!editContent.trim()}
+                                      className="flex items-center gap-2"
+                                    >
+                                      <Save className="h-3 w-3" />
+                                      Save
+                                    </Button>
+                                    <Button variant="outline" size="sm" onClick={cancelEditingAnnotation}>
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </div>
                               </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  deleteAnnotation(annotation.annotationId);
-                                }}
+                            ) : (
+                              /* View Mode */
+                              <div
+                                className="p-3 border rounded-lg hover:bg-muted/50 cursor-pointer"
+                                onClick={() => seekTo(annotation.timestamp.start)}
                               >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </div>
-                            <p className="text-sm mb-2">{annotation.content}</p>
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <Avatar className="h-6 w-6">
+                                      <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                                        {getInitials(getReviewerName(annotation.reviewerId))}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <Badge variant="outline" className="text-xs">
+                                      {annotation.trialPart}
+                                    </Badge>
+                                    <span className="text-xs text-muted-foreground font-mono">
+                                      {formatDuration(annotation.timestamp.start)}
+                                      {annotation.timestamp.end && ` - ${formatDuration(annotation.timestamp.end)}`}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        startEditingAnnotation(annotation);
+                                      }}
+                                      title="Edit annotation"
+                                    >
+                                      <Edit className="h-3 w-3" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        deleteAnnotation(annotation.annotationId);
+                                      }}
+                                      title="Delete annotation"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+                                <p className="text-sm mb-2">{annotation.content}</p>
+                              </div>
+                            )}
                           </div>
                         ))
                       )}

@@ -21,63 +21,70 @@ export const dummyReviewers: Reviewer[] = [
   }
 ];
 
-export const dummyTrials: Trial[] = [
-  {
-    trialId: 'trial-001',
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-    transcriptUrl: '/transcripts/trial-001.json',
-    grade: 'Grade 5',
-    trialDate: '2024-01-15T10:30:00Z',
-    tutorId: 'tutor-101',
-    region: 'NAM',
-    channel: 'perf-meta',
-    duration: 1800 // 30 minutes
-  },
-  {
-    trialId: 'trial-002',
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-    transcriptUrl: '/transcripts/trial-002.json',
-    grade: 'Grade 7',
-    trialDate: '2024-01-16T14:20:00Z',
-    tutorId: 'tutor-102',
-    region: 'ISC',
-    channel: 'organic-content',
-    duration: 2100 // 35 minutes
-  },
-  {
-    trialId: 'trial-003',
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-    transcriptUrl: '/transcripts/trial-003.json',
-    grade: 'Grade 3',
-    trialDate: '2024-01-17T09:15:00Z',
-    tutorId: 'tutor-103',
-    region: 'ROW',
-    channel: 'BTL',
-    duration: 1500 // 25 minutes
-  },
-  {
-    trialId: 'trial-004',
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-    transcriptUrl: '/transcripts/trial-004.json',
-    grade: 'Grade 6',
-    trialDate: '2024-01-18T16:45:00Z',
-    tutorId: 'tutor-104',
-    region: 'NAM',
-    channel: 'tutor-referral',
-    duration: 1950 // 32.5 minutes
-  },
-  {
-    trialId: 'trial-005',
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-    transcriptUrl: '/transcripts/trial-005.json',
-    grade: 'Grade 4',
-    trialDate: '2024-01-19T11:00:00Z',
-    tutorId: 'tutor-105',
-    region: 'ISC',
-    channel: 'parent-referral',
-    duration: 1650 // 27.5 minutes
+const generateDummyTrials = (): Trial[] => {
+  const studentNames = [
+    'Emma Johnson', 'Liam Chen', 'Sophia Patel', 'Noah Williams', 'Ava Brown',
+    'Oliver Singh', 'Isabella Rodriguez', 'Mason Kumar', 'Charlotte Thompson', 'Lucas Garcia',
+    'Amelia Davis', 'Ethan Wilson', 'Harper Miller', 'Alexander Anderson', 'Evelyn Taylor',
+    'Benjamin Thomas', 'Abigail Jackson', 'Jacob White', 'Emily Harris', 'Michael Martin',
+    'Elizabeth Thompson', 'Daniel Garcia', 'Sofia Martinez', 'Matthew Robinson', 'Avery Clark',
+    'Andrew Rodriguez', 'Ella Lewis', 'Joshua Lee', 'Scarlett Walker', 'Anthony Hall',
+    'Victoria Allen', 'Christopher Young', 'Grace Hernandez', 'Samuel King', 'Chloe Wright',
+    'Ryan Lopez', 'Zoe Hill', 'Nathan Scott', 'Lily Green', 'Caleb Adams',
+    'Hannah Baker', 'Hunter Gonzalez', 'Lillian Nelson', 'Connor Carter', 'Addison Mitchell',
+    'Eli Perez', 'Layla Roberts', 'Aaron Turner', 'Natalie Phillips', 'Ian Campbell'
+  ];
+
+  const tutorNames = [
+    'Alex Rodriguez', 'Maria Santos', 'David Kim', 'Sarah Thompson', 'Michael Garcia',
+    'Rachel Chen', 'James Wilson', 'Lisa Patel', 'Kevin Singh', 'Amanda Davis',
+    'Ryan Miller', 'Jessica Anderson', 'Tyler Taylor', 'Ashley White', 'Brandon Harris',
+    'Stephanie Martin', 'Jordan Clark', 'Nicole Lewis', 'Austin Lee', 'Megan Walker',
+    'Sean Hall', 'Lauren Allen', 'Cameron Young', 'Brittany King', 'Derek Wright',
+    'Samantha Lopez', 'Blake Hill', 'Danielle Scott', 'Trevor Green', 'Kaitlyn Adams',
+    'Marcus Baker', 'Alyssa Gonzalez', 'Cole Nelson', 'Jasmine Carter', 'Garrett Mitchell',
+    'Morgan Perez', 'Shane Roberts', 'Taylor Turner', 'Brooke Phillips', 'Dustin Campbell'
+  ];
+
+  const grades = ['Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7'];
+  const regions: ('NAM' | 'ISC' | 'ROW')[] = ['NAM', 'ISC', 'ROW'];
+  const channels: ('perf-meta' | 'organic-content' | 'BTL' | 'tutor-referral' | 'parent-referral')[] =
+    ['perf-meta', 'organic-content', 'BTL', 'tutor-referral', 'parent-referral'];
+  const versions: ('legacy' | 'v3.1' | 'v3.2')[] = ['legacy', 'v3.1', 'v3.2'];
+
+  const trials: Trial[] = [];
+
+  for (let i = 1; i <= 100; i++) {
+    const randomDate = new Date(2024,
+      Math.floor(Math.random() * 3), // Jan, Feb, Mar
+      Math.floor(Math.random() * 28) + 1, // 1-28
+      Math.floor(Math.random() * 12) + 8, // 8-19 hours
+      Math.floor(Math.random() * 60) // 0-59 minutes
+    );
+
+    const duration = Math.floor(Math.random() * 3600) + 900; // 15-75 minutes
+
+    trials.push({
+      trialId: `trial-${i.toString().padStart(3, '0')}`,
+      videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+      transcriptUrl: `/transcripts/trial-${i.toString().padStart(3, '0')}.json`,
+      studentId: `student-${i.toString().padStart(3, '0')}`,
+      studentName: studentNames[Math.floor(Math.random() * studentNames.length)],
+      tutorId: `tutor-${(100 + i).toString()}`,
+      tutorName: tutorNames[Math.floor(Math.random() * tutorNames.length)],
+      grade: grades[Math.floor(Math.random() * grades.length)],
+      trialDate: randomDate.toISOString(),
+      region: regions[Math.floor(Math.random() * regions.length)],
+      channel: channels[Math.floor(Math.random() * channels.length)],
+      duration,
+      trialVersion: versions[Math.floor(Math.random() * versions.length)]
+    });
   }
-];
+
+  return trials;
+};
+
+export const dummyTrials: Trial[] = generateDummyTrials();
 
 export const dummyTranscripts: Transcript[] = [
   {
@@ -311,11 +318,13 @@ export const formatDuration = (seconds: number): string => {
 };
 
 export const formatDate = (dateString: string): string => {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
+  return new Date(dateString).toLocaleDateString('en-IN', {
+    year: '2-digit',
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
+    timeZone: 'Asia/Kolkata',
+    timeZoneName: 'short'
   });
 };
