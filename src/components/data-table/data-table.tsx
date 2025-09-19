@@ -138,7 +138,7 @@ export function DataTable<TData, TValue>({
   }, [table, onTableReady]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       {config.enableToolbar && (
         <DataTableToolbar
           table={table}

@@ -55,12 +55,14 @@ const generateDummyTrials = (): Trial[] => {
   const trials: Trial[] = [];
 
   for (let i = 1; i <= 100; i++) {
-    const randomDate = new Date(2024,
-      Math.floor(Math.random() * 3), // Jan, Feb, Mar
-      Math.floor(Math.random() * 28) + 1, // 1-28
-      Math.floor(Math.random() * 12) + 8, // 8-19 hours
-      Math.floor(Math.random() * 60) // 0-59 minutes
-    );
+    // Generate dates from the last 3 months (Sept 2024 - Jan 2025)
+    const now = new Date();
+    const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+    const randomTime = threeMonthsAgo.getTime() + Math.random() * (now.getTime() - threeMonthsAgo.getTime());
+    const randomDate = new Date(randomTime);
+
+    // Set random hour between 8-19 (business hours)
+    randomDate.setHours(Math.floor(Math.random() * 12) + 8, Math.floor(Math.random() * 60));
 
     const duration = Math.floor(Math.random() * 3600) + 900; // 15-75 minutes
 
