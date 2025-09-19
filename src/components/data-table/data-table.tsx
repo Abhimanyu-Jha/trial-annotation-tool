@@ -7,6 +7,7 @@ import {
   type PaginationState,
   type SortingState,
   type VisibilityState,
+  type Table as TableType,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
@@ -28,17 +29,24 @@ import { DataTablePagination } from "./pagination";
 import { DataTableToolbar } from "./toolbar";
 import { useTableConfig, type TableConfig } from "./utils/table-config";
 
+interface DateRange {
+  from: Date | undefined
+  to: Date | undefined
+}
+
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   config?: Partial<TableConfig>;
   loading?: boolean;
   totalItems?: number;
+  dateRange?: DateRange | null;
+  onDateRangeChange?: (range: DateRange | null) => void;
   onPaginationChange?: (pagination: PaginationState) => void;
   onSortingChange?: (sorting: SortingState) => void;
   onColumnFiltersChange?: (filters: ColumnFiltersState) => void;
   onGlobalFilterChange?: (filter: string) => void;
-  onTableReady?: (table: Table<TData>) => void;
+  onTableReady?: (table: TableType<TData>) => void;
   manualPagination?: boolean;
   manualSorting?: boolean;
   manualFiltering?: boolean;
@@ -50,6 +58,8 @@ export function DataTable<TData, TValue>({
   config: configOverride,
   loading = false,
   totalItems,
+  dateRange,
+  onDateRangeChange,
   onPaginationChange,
   onSortingChange,
   onColumnFiltersChange,
@@ -130,7 +140,12 @@ export function DataTable<TData, TValue>({
   return (
     <div className="space-y-4">
       {config.enableToolbar && (
-        <DataTableToolbar table={table} config={config} />
+        <DataTableToolbar
+          table={table}
+          config={config}
+          dateRange={dateRange}
+          onDateRangeChange={onDateRangeChange}
+        />
       )}
       <div className="rounded-md border overflow-auto">
         <Table>

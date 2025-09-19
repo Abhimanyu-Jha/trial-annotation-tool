@@ -59,4 +59,5 @@ export interface TrialWithStatus extends Trial {
   annotationStatus: 'Annotated' | 'Not Annotated';
   annotatorNames: string[];
   lastModified: string;
+  enrollmentStatus: 'yes' | 'no (>2w since trial)' | 'not yet (<2w since trial)';
 }

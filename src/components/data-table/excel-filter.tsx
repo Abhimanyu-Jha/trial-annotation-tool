@@ -15,8 +15,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Filter,
   Search,
-  Check,
-  X,
   ChevronDown
 } from "lucide-react";
 
@@ -174,27 +172,6 @@ export function ExcelFilter<TData, TValue>({
           </div>
         </ScrollArea>
 
-        <div className="p-2 border-t">
-          <div className="flex justify-between">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsOpen(false)}
-              className="h-7"
-            >
-              <X className="h-3 w-3 mr-1" />
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => setIsOpen(false)}
-              className="h-7"
-            >
-              <Check className="h-3 w-3 mr-1" />
-              Apply
-            </Button>
-          </div>
-        </div>
       </PopoverContent>
     </Popover>
   );

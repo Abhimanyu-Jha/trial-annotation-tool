@@ -18,7 +18,7 @@ export const columns: ColumnDef<TrialWithStatus>[] = [
       const trial = row.original;
       return (
         <Link href={`https://admin.leap.cuemath.com/student/${trial.studentId}`} target="_blank">
-          <Button variant="link" className="h-auto p-0 text-black hover:text-gray-700 font-medium cursor-pointer">
+          <Button variant="link" className="h-auto p-0 text-foreground hover:text-muted-foreground font-medium cursor-pointer">
             {trial.studentName}
           </Button>
         </Link>
@@ -39,7 +39,7 @@ export const columns: ColumnDef<TrialWithStatus>[] = [
       const trial = row.original;
       return (
         <Link href={`https://admin.leap.cuemath.com/tutor/${trial.tutorId}`} target="_blank">
-          <Button variant="link" className="h-auto p-0 text-black hover:text-gray-700 font-medium cursor-pointer">
+          <Button variant="link" className="h-auto p-0 text-foreground hover:text-muted-foreground font-medium cursor-pointer">
             {trial.tutorName}
           </Button>
         </Link>
@@ -74,35 +74,9 @@ export const columns: ColumnDef<TrialWithStatus>[] = [
   {
     accessorKey: "trialDate",
     header: ({ column }) => (
-      <DataTableColumnHeader
-        column={column}
-        title="Trial Date"
-        filterOptions={[
-          { label: "January 2024", value: "2024-01" },
-          { label: "February 2024", value: "2024-02" },
-          { label: "March 2024", value: "2024-03" },
-          { label: "April 2024", value: "2024-04" },
-          { label: "May 2024", value: "2024-05" },
-          { label: "June 2024", value: "2024-06" },
-          { label: "July 2024", value: "2024-07" },
-          { label: "August 2024", value: "2024-08" },
-          { label: "September 2024", value: "2024-09" },
-          { label: "October 2024", value: "2024-10" },
-          { label: "November 2024", value: "2024-11" },
-          { label: "December 2024", value: "2024-12" },
-        ]}
-      />
+      <DataTableColumnHeader column={column} title="Trial Date" enableFilter={false} />
     ),
     cell: ({ row }) => <div>{formatDate(row.getValue("trialDate"))}</div>,
-    filterFn: (row, id, value) => {
-      const rowDate = new Date(row.getValue(id) as string);
-
-      return value.some((monthValue: string) => {
-        const [year, month] = monthValue.split('-');
-        return rowDate.getFullYear() === parseInt(year) &&
-               (rowDate.getMonth() + 1) === parseInt(month);
-      });
-    },
     sortingFn: (rowA, rowB, columnId) => {
       const dateA = new Date(rowA.getValue(columnId) as string);
       const dateB = new Date(rowB.getValue(columnId) as string);
@@ -180,11 +154,11 @@ export const columns: ColumnDef<TrialWithStatus>[] = [
       return (
         <Badge
           className={
-            channel === 'perf-meta' ? 'bg-blue-100 text-blue-800 hover:bg-blue-200' :
-            channel === 'organic-content' ? 'bg-green-100 text-green-800 hover:bg-green-200' :
-            channel === 'BTL' ? 'bg-purple-100 text-purple-800 hover:bg-purple-200' :
-            channel === 'tutor-referral' ? 'bg-orange-100 text-orange-800 hover:bg-orange-200' :
-            'bg-pink-100 text-pink-800 hover:bg-pink-200'
+            channel === 'perf-meta' ? 'bg-blue-100 text-blue-800 hover:bg-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:hover:bg-blue-900/30' :
+            channel === 'organic-content' ? 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/20 dark:text-green-300 dark:hover:bg-green-900/30' :
+            channel === 'BTL' ? 'bg-purple-100 text-purple-800 hover:bg-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:hover:bg-purple-900/30' :
+            channel === 'tutor-referral' ? 'bg-orange-100 text-orange-800 hover:bg-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:hover:bg-orange-900/30' :
+            'bg-pink-100 text-pink-800 hover:bg-pink-200 dark:bg-pink-900/20 dark:text-pink-300 dark:hover:bg-pink-900/30'
           }
         >
           {channel}
@@ -239,6 +213,39 @@ export const columns: ColumnDef<TrialWithStatus>[] = [
     },
   },
   {
+    accessorKey: "enrollmentStatus",
+    header: ({ column }) => (
+      <DataTableColumnHeader
+        column={column}
+        title="Enrolled"
+        filterOptions={[
+          { label: "Yes", value: "yes" },
+          { label: "No (>2w since trial)", value: "no (>2w since trial)" },
+          { label: "Not yet (<2w since trial)", value: "not yet (<2w since trial)" },
+        ]}
+      />
+    ),
+    cell: ({ row }) => {
+      const status = row.getValue("enrollmentStatus") as string;
+      return (
+        <Badge
+          className={
+            status === 'yes' ? 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/20 dark:text-green-300 dark:hover:bg-green-900/30' :
+            status === 'no (>2w since trial)' ? 'bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-900/20 dark:text-red-300 dark:hover:bg-red-900/30' :
+            'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300 dark:hover:bg-yellow-900/30'
+          }
+        >
+          {status === 'yes' ? 'Yes' :
+           status === 'no (>2w since trial)' ? 'No (>2w)' :
+           'Not yet (<2w)'}
+        </Badge>
+      );
+    },
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id));
+    },
+  },
+  {
     accessorKey: "annotatorNames",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Annotators" enableFilter={false} />
@@ -274,7 +281,7 @@ export const columns: ColumnDef<TrialWithStatus>[] = [
       const trial = row.original;
       return (
         <Link href={`/annotate/${trial.trialId}`}>
-          <Button variant="link" className="h-auto p-0 text-black hover:text-gray-700 font-medium cursor-pointer">
+          <Button variant="link" className="h-auto p-0 text-foreground hover:text-muted-foreground font-medium cursor-pointer">
             View
           </Button>
         </Link>

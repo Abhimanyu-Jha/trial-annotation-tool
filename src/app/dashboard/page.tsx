@@ -1,14 +1,37 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { getTrialsWithStatus } from '@/lib/dummy-data';
 import { TrialWithStatus } from '@/lib/types';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { DataTable } from '@/components/data-table/data-table';
 import { columns } from '@/components/data-table/columns';
 
+interface DateRange {
+  from: Date | undefined
+  to: Date | undefined
+}
+
 export default function Dashboard() {
   const [trials] = useState<TrialWithStatus[]>(getTrialsWithStatus());
+  const [dateRange, setDateRange] = useState<DateRange | null>(null);
+
+  const filteredTrials = useMemo(() => {
+    if (!dateRange?.from) return trials;
+
+    return trials.filter(trial => {
+      const trialDate = new Date(trial.trialDate);
+      const startDate = dateRange.from!;
+      const endDate = dateRange.to || dateRange.from!;
+
+      // Set time to start of day for comparison
+      const trialDay = new Date(trialDate.getFullYear(), trialDate.getMonth(), trialDate.getDate());
+      const startDay = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+      const endDay = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+
+      return trialDay >= startDay && trialDay <= endDay;
+    });
+  }, [trials, dateRange]);
 
 
   return (
@@ -27,7 +50,7 @@ export default function Dashboard() {
 
       <main className="container mx-auto px-4 py-8">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold">Trial Videos ({trials.length})</h1>
+          <h1 className="text-2xl font-bold">Trial Videos ({filteredTrials.length})</h1>
           <p className="text-muted-foreground mt-1">
             Browse, filter, and annotate trial videos with Excel-like inline filters
           </p>
@@ -36,7 +59,9 @@ export default function Dashboard() {
         <div className="overflow-x-auto">
           <DataTable
             columns={columns}
-            data={trials}
+            data={filteredTrials}
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
             config={{
               enableSearch: true,
               enableColumnFilters: true,

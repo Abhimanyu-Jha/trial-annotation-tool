@@ -302,11 +302,34 @@ export const getTrialsWithStatus = (): TrialWithStatus[] => {
       ? Math.max(...trialAnnotations.map(ann => new Date(ann.updatedAt).getTime()))
       : new Date(trial.trialDate).getTime();
 
+    // Calculate enrollment status based on trial date
+    const trialDate = new Date(trial.trialDate);
+    const now = new Date();
+    const daysSinceTrial = Math.floor((now.getTime() - trialDate.getTime()) / (1000 * 60 * 60 * 24));
+
+    let enrollmentStatus: 'yes' | 'no (>2w since trial)' | 'not yet (<2w since trial)';
+
+    if (daysSinceTrial > 14) {
+      // For trials older than 2 weeks, mix of all three statuses
+      const random = Math.random();
+      if (random < 0.5) {
+        enrollmentStatus = 'yes';
+      } else if (random < 0.75) {
+        enrollmentStatus = 'no (>2w since trial)';
+      } else {
+        enrollmentStatus = 'not yet (<2w since trial)';
+      }
+    } else {
+      // For recent trials (less than 2 weeks), mostly "not yet" with some "yes"
+      enrollmentStatus = Math.random() > 0.7 ? 'yes' : 'not yet (<2w since trial)';
+    }
+
     return {
       ...trial,
       annotationStatus: trialAnnotations.length > 0 ? 'Annotated' : 'Not Annotated',
       annotatorNames,
-      lastModified: new Date(lastModified).toISOString()
+      lastModified: new Date(lastModified).toISOString(),
+      enrollmentStatus
     };
   });
 };
