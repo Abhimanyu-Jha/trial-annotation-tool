@@ -192,6 +192,17 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
     checkPreset()
   }, [range, checkPreset])
 
+  // Sync with external prop changes (like reset)
+  useEffect(() => {
+    const newFrom = initialDateFrom ? getDateAdjustedForTimezone(initialDateFrom) : undefined
+    const newTo = initialDateTo ? getDateAdjustedForTimezone(initialDateTo) : undefined
+
+    // Only update if the external props have actually changed
+    if (newFrom !== range.from || newTo !== range.to) {
+      setRange({ from: newFrom, to: newTo })
+    }
+  }, [initialDateFrom, initialDateTo])
+
   const PresetButton = ({
     preset,
     label,
@@ -250,7 +261,7 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align={align} className="w-auto p-0" sideOffset={4}>
+      <PopoverContent align={align} className="w-[520px] p-0" sideOffset={4}>
         <div className="flex">
           <div className="flex flex-col border-r min-w-[160px]">
             <div className="p-2">
@@ -274,16 +285,29 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
                 };
                 setRange(newRange);
 
-                // Auto-close and trigger update when a complete range is selected
+                // Only trigger update when a complete range is selected, but don't auto-close
                 if (newRange.from && newRange.to) {
                   onUpdate?.({ range: newRange });
-                  setIsOpen(false);
                 }
               }}
               selected={range}
               numberOfMonths={1}
               defaultMonth={new Date()}
             />
+            {range.from && range.to && (
+              <div className="flex items-center justify-between mt-3 pt-3 border-t">
+                <div className="text-sm text-muted-foreground">
+                  {formatDate(range.from, locale)} - {formatDate(range.to, locale)}
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => setIsOpen(false)}
+                  className="h-8"
+                >
+                  Apply
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </PopoverContent>
