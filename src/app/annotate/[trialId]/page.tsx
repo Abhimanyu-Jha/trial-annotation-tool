@@ -724,12 +724,18 @@ export default function AnnotatePage() {
                       ) : (
                         // Create a combined list with proper chronological ordering
                         (() => {
-                          const items = [...annotations];
+                          type AnnotationOrCreating = Annotation | {
+                            type: 'creating';
+                            timestamp: { start: number };
+                            annotationId: string;
+                          };
+
+                          const items: AnnotationOrCreating[] = [...annotations];
 
                           // Add the creation form at the correct chronological position
                           if (isCreatingAnnotation && annotationStart !== null) {
                             const insertIndex = items.findIndex(ann => ann.timestamp.start > annotationStart);
-                            const createFormItem = {
+                            const createFormItem: AnnotationOrCreating = {
                               type: 'creating' as const,
                               timestamp: { start: annotationStart },
                               annotationId: 'creating-form'

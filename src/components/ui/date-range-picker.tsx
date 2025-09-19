@@ -201,7 +201,7 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
     if (newFrom !== range.from || newTo !== range.to) {
       setRange({ from: newFrom, to: newTo })
     }
-  }, [initialDateFrom, initialDateTo])
+  }, [initialDateFrom, initialDateTo, range.from, range.to])
 
   const PresetButton = ({
     preset,
