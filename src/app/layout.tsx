@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Video Trial Annotation Tool",
+  title: "Cuemath Trial Analysis Hub",
   description: "A web-based annotation tool for reviewing trial class videos",
 };
 

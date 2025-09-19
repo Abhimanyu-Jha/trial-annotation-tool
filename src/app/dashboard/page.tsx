@@ -40,8 +40,7 @@ export default function Dashboard() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Video Trial Annotation Tool</h1>
-              <p className="text-muted-foreground mt-1">Manage and annotate trial class videos</p>
+              <h1 className="text-2xl font-bold">Cuemath Trial Analysis Hub</h1>
             </div>
             <ThemeToggle />
           </div>
@@ -49,12 +48,6 @@ export default function Dashboard() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold">Trial Videos ({filteredTrials.length})</h1>
-          <p className="text-muted-foreground mt-1">
-            Browse, filter, and annotate trial videos with Excel-like inline filters
-          </p>
-        </div>
 
         <div className="overflow-x-auto">
           <DataTable

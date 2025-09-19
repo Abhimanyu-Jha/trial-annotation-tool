@@ -66,7 +66,7 @@ export function DataTableColumnHeader<TData, TValue>({
             <Button
               variant="ghost"
               size="sm"
-              className="data-[state=open]:bg-accent h-8 focus-visible:ring-0 focus-visible:ring-offset-0"
+              className="data-[state=open]:bg-accent h-8 focus-visible:ring-0 focus-visible:ring-offset-0 px-2"
             >
               <span>{title}</span>
               {currentDirection === "desc" ? (
