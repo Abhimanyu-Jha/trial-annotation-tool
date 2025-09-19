@@ -90,8 +90,8 @@ export function ConversationCard({
   });
 
   return (
-    <Card className="w-full">
-      <CardHeader className="pb-3">
+    <Card className="w-full gap-4">
+      <CardHeader className="pb-0">
         <CardTitle className="flex items-center justify-between text-base">
           <div className="flex items-center gap-2">
             <UsersIcon className="h-4 w-4" />

@@ -85,13 +85,15 @@ export function DataTableToolbar<TData>({
       </div>
 
       {config.enableSearch && (
-        <ConversationCard
-          trials={filteredData}
-          isFiltered={isFiltered || !!hasDateFilter || !!globalFilter}
-          searchTerm={globalFilter}
-          dateRange={dateRange}
-          columnFilters={table.getState().columnFilters}
-        />
+        <div className="pb-2">
+          <ConversationCard
+            trials={filteredData}
+            isFiltered={isFiltered || !!hasDateFilter || !!globalFilter}
+            searchTerm={globalFilter}
+            dateRange={dateRange}
+            columnFilters={table.getState().columnFilters}
+          />
+        </div>
       )}
     </div>
   );
