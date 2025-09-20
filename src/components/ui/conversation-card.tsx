@@ -35,18 +35,40 @@ export function ConversationCard({
 
 
 
-  // Custom label renderer
+  // Custom label renderer with proper text color
   const renderLabel = (props: PieLabelRenderProps) => {
     const value = props.value as number;
-    if (value === 0) return '';
+    if (value === 0) return null;
 
     const percentage = totalTrials > 0 ? Math.round((value / totalTrials) * 100) : 0;
-    return `${value} (${percentage}%)`;
+
+    return (
+      <text
+        x={props.x}
+        y={props.y}
+        fill="var(--foreground)"
+        textAnchor={props.x && props.cx && Number(props.x) > Number(props.cx) ? 'start' : 'end'}
+        dominantBaseline="central"
+        fontSize={12}
+      >
+        {`${value} (${percentage}%)`}
+      </text>
+    );
   };
+
+  // Color palette using CSS variables for proper dark mode support
+  const chartColors = [
+    'var(--chart-1)', // blue
+    'var(--chart-2)', // emerald
+    'var(--chart-3)', // amber
+    'var(--chart-4)', // red
+    'var(--chart-5)', // violet
+    'var(--chart-1)', // cycle back
+  ];
 
   // Get chart data for color key
   const chartData = breakdownBy === 'none' ? [
-    { name: 'Total', color: '#3b82f6' }
+    { name: 'Total', color: chartColors[0] }
   ] : (() => {
     const breakdown: { [key: string]: number } = {};
     trials.forEach(trial => {
@@ -56,10 +78,9 @@ export function ConversationCard({
       breakdown[key] = (breakdown[key] || 0) + 1;
     });
 
-    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
     return Object.entries(breakdown).map(([key], index) => ({
       name: key,
-      color: colors[index % colors.length]
+      color: chartColors[index % chartColors.length]
     }));
   })();
 
@@ -227,7 +248,7 @@ export function ConversationCard({
                       {
                         name: 'Total',
                         value: totalTrials,
-                        color: '#3b82f6'
+                        color: chartColors[0]
                       }
                     ] : (() => {
                       const breakdown: { [key: string]: number } = {};
@@ -238,13 +259,12 @@ export function ConversationCard({
                         breakdown[key] = (breakdown[key] || 0) + 1;
                       });
 
-                      const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
                       return Object.entries(breakdown)
                         .filter(([, value]) => value > 0)
                         .map(([key, value], index) => ({
                           name: key,
                           value,
-                          color: colors[index % colors.length]
+                          color: chartColors[index % chartColors.length]
                         }));
                     })()}
                     cx="50%"
@@ -257,7 +277,7 @@ export function ConversationCard({
                     labelLine={false}
                   >
                     {(breakdownBy === 'none' ? [
-                      { name: 'Total', color: '#3b82f6' }
+                      { name: 'Total', color: chartColors[0] }
                     ] : (() => {
                       const breakdown: { [key: string]: number } = {};
                       trials.forEach(trial => {
@@ -267,15 +287,19 @@ export function ConversationCard({
                         breakdown[key] = (breakdown[key] || 0) + 1;
                       });
 
-                      const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
                       return Object.entries(breakdown)
                         .filter(([, value]) => value > 0)
                         .map(([key], index) => ({
                           name: key,
-                          color: colors[index % colors.length]
+                          color: chartColors[index % chartColors.length]
                         }));
                     })()).map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={entry.color}
+                        stroke="var(--background)"
+                        strokeWidth={2}
+                      />
                     ))}
                   </Pie>
                 </PieChart>

@@ -105,16 +105,16 @@ export function ChartsCard({
     return Array.from(uniqueCategories).sort();
   }, [trials, breakdownBy]);
 
-  // Color palette for different categories
+  // Color palette for different categories - using CSS variables for proper dark mode support
   const colors = [
-    '#3b82f6', // blue
-    '#10b981', // emerald
-    '#f59e0b', // amber
-    '#ef4444', // red
-    '#8b5cf6', // violet
-    '#06b6d4', // cyan
-    '#f97316', // orange
-    '#84cc16', // lime
+    'var(--chart-1)', // blue
+    'var(--chart-2)', // emerald
+    'var(--chart-3)', // amber
+    'var(--chart-4)', // red
+    'var(--chart-5)', // violet
+    'var(--chart-1)', // cycle back to chart-1
+    'var(--chart-2)', // cycle back to chart-2
+    'var(--chart-3)', // cycle back to chart-3
   ];
 
   const getBreakdownLabel = (breakdown: BreakdownType) => {
@@ -297,15 +297,19 @@ export function ChartsCard({
                   bottom: 10,
                 }}
               >
-                <CartesianGrid strokeDasharray="3 3" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis
                   dataKey="month"
-                  tick={{ fontSize: 12 }}
+                  tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
+                  axisLine={{ stroke: 'var(--border)' }}
+                  tickLine={{ stroke: 'var(--border)' }}
                 />
                 <YAxis
                   domain={[0, 100]}
                   tickFormatter={(value) => `${value}%`}
-                  tick={{ fontSize: 12 }}
+                  tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
+                  axisLine={{ stroke: 'var(--border)' }}
+                  tickLine={{ stroke: 'var(--border)' }}
                   width={30}
                 />
                 <Tooltip
