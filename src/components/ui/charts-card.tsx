@@ -1,75 +1,147 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { TrialWithStatus } from "@/lib/types";
-import { UsersIcon, Calendar, Search, Filter } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, type PieLabelRenderProps } from 'recharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState } from "react";
+import { TrialWithStatus } from "@/lib/types";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { TrendingUp, Search, Filter, Calendar } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { useState, useMemo } from "react";
 
 interface DateRange {
   from: Date | undefined;
   to: Date | undefined;
 }
 
-interface ConversationCardProps {
+interface ChartsCardProps {
   trials: TrialWithStatus[];
   isFiltered?: boolean;
-  searchTerm?: string;
   dateRange?: DateRange | null;
+  searchTerm?: string;
   columnFilters?: Array<{ id: string; value: unknown }>;
 }
 
 type BreakdownType = 'none' | 'grade' | 'region' | 'channel' | 'trialVersion' | 'enrollment';
 
-export function ConversationCard({
+export function ChartsCard({
   trials,
   isFiltered: _isFiltered = false,
-  searchTerm,
   dateRange,
+  searchTerm,
   columnFilters = []
-}: ConversationCardProps) {
+}: ChartsCardProps) {
   const [breakdownBy, setBreakdownBy] = useState<BreakdownType>('none');
-  const totalTrials = trials.length;
 
+  const chartData = useMemo(() => {
+    if (trials.length === 0) return [];
 
+    // Group trials by month and breakdown category
+    const monthlyData: { [month: string]: { [category: string]: { enrolled: number; total: number } } } = {};
 
-  // Custom label renderer
-  const renderLabel = (props: PieLabelRenderProps) => {
-    const value = props.value as number;
-    if (value === 0) return '';
-
-    const percentage = totalTrials > 0 ? Math.round((value / totalTrials) * 100) : 0;
-    return `${value} (${percentage}%)`;
-  };
-
-  // Get chart data for color key
-  const chartData = breakdownBy === 'none' ? [
-    { name: 'Total', color: '#3b82f6' }
-  ] : (() => {
-    const breakdown: { [key: string]: number } = {};
     trials.forEach(trial => {
-      const key = breakdownBy === 'enrollment'
+      const trialDate = new Date(trial.trialDate);
+      const monthKey = trialDate.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short'
+      });
+
+      const categoryValue = breakdownBy === 'none'
+        ? 'Total'
+        : breakdownBy === 'enrollment'
         ? trial.enrollmentStatus
         : trial[breakdownBy] as string;
-      breakdown[key] = (breakdown[key] || 0) + 1;
+
+      if (!monthlyData[monthKey]) {
+        monthlyData[monthKey] = {};
+      }
+
+      if (!monthlyData[monthKey][categoryValue]) {
+        monthlyData[monthKey][categoryValue] = { enrolled: 0, total: 0 };
+      }
+
+      monthlyData[monthKey][categoryValue].total++;
+      if (trial.enrollmentStatus === 'yes') {
+        monthlyData[monthKey][categoryValue].enrolled++;
+      }
     });
 
-    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
-    return Object.entries(breakdown).map(([key], index) => ({
-      name: key,
-      color: colors[index % colors.length]
-    }));
-  })();
+    // Get all unique categories
+    const allCategories = new Set<string>();
+    Object.values(monthlyData).forEach(monthCategories => {
+      Object.keys(monthCategories).forEach(category => allCategories.add(category));
+    });
 
+    // Convert to chart format
+    const result = Object.entries(monthlyData).map(([month, categories]) => {
+      const monthData: Record<string, string | number> = { month };
+
+      // Ensure all categories have a value (0 if no data)
+      allCategories.forEach(category => {
+        const stats = categories[category] || { enrolled: 0, total: 0 };
+        const conversionRate = stats.total > 0 ? (stats.enrolled / stats.total) * 100 : 0;
+        monthData[category] = Math.round(conversionRate * 10) / 10; // Round to 1 decimal
+      });
+
+      return monthData;
+    }).sort((a, b) => new Date(a.month + ' 1').getTime() - new Date(b.month + ' 1').getTime());
+
+    console.log('Chart data:', result, 'Categories:', Array.from(allCategories));
+    return result;
+  }, [trials, breakdownBy]);
+
+  // Get unique categories for coloring
+  const categories = useMemo(() => {
+    if (breakdownBy === 'none') {
+      return ['Total'];
+    }
+
+    const uniqueCategories = new Set<string>();
+    trials.forEach(trial => {
+      const value = breakdownBy === 'enrollment'
+        ? trial.enrollmentStatus
+        : trial[breakdownBy] as string;
+      uniqueCategories.add(value);
+    });
+    return Array.from(uniqueCategories).sort();
+  }, [trials, breakdownBy]);
+
+  // Color palette for different categories
+  const colors = [
+    '#3b82f6', // blue
+    '#10b981', // emerald
+    '#f59e0b', // amber
+    '#ef4444', // red
+    '#8b5cf6', // violet
+    '#06b6d4', // cyan
+    '#f97316', // orange
+    '#84cc16', // lime
+  ];
+
+  const getBreakdownLabel = (breakdown: BreakdownType) => {
+    switch (breakdown) {
+      case 'grade': return 'Grade';
+      case 'region': return 'Region';
+      case 'channel': return 'Channel';
+      case 'trialVersion': return 'Trial Version';
+      default: return breakdown;
+    }
+  };
+
+  const formatTooltipValue = (value: number, name: string) => {
+    return [`${value}%`, name];
+  };
+
+  const formatTooltipLabel = (label: string) => {
+    return `${label} - Conversion Rate`;
+  };
+
+  // Applied filters logic (copied from conversation card)
   const formatDateRange = (range: DateRange) => {
     if (!range.from) return '';
     const fromDate = range.from.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const toDate = range.to ? range.to.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : fromDate;
     return range.to ? `${fromDate} - ${toDate}` : fromDate;
   };
-
 
   const getRegionEmoji = (region: string) => {
     return region === 'NAM' ? '🇺🇸' : region === 'ISC' ? '🇮🇳' : '🇦🇪';
@@ -146,7 +218,6 @@ export function ConversationCard({
          (typeof filter.value === 'boolean'))) {
 
       if (Array.isArray(filter.value)) {
-        // Create individual tags for each value in array
         filter.value.forEach(val => {
           activeFilters.push({
             type: 'column',
@@ -157,7 +228,6 @@ export function ConversationCard({
           });
         });
       } else {
-        // Single value filter
         activeFilters.push({
           type: 'column',
           value: formatSingleFilterValue(filter.id, filter.value),
@@ -170,12 +240,12 @@ export function ConversationCard({
   });
 
   return (
-    <Card className="w-full gap-4 h-full">
+    <Card className="w-full gap-4 max-h-[500px]">
       <CardHeader className="pb-0">
         <CardTitle className="flex items-center justify-between text-base">
           <div className="flex items-center gap-2">
-            <UsersIcon className="h-4 w-4" />
-            Volume Breakdown
+            <TrendingUp className="h-4 w-4" />
+            Conversion Trends
           </div>
           <Select value={breakdownBy} onValueChange={(value: BreakdownType) => setBreakdownBy(value)}>
             <SelectTrigger className="w-40">
@@ -192,7 +262,7 @@ export function ConversationCard({
           </Select>
         </CardTitle>
       </CardHeader>
-      <CardContent className="pt-0 space-y-4">
+      <CardContent className="pt-0 space-y-4 -mt-2">
         {/* Applied Filters */}
         {activeFilters.length > 0 && (
           <div className="space-y-2">
@@ -215,102 +285,72 @@ export function ConversationCard({
           </div>
         )}
 
-        {/* Statistics */}
-        <div className="space-y-4">
-          {/* Ring Chart */}
-          <div className="relative">
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={breakdownBy === 'none' ? [
-                      {
-                        name: 'Total',
-                        value: totalTrials,
-                        color: '#3b82f6'
-                      }
-                    ] : (() => {
-                      const breakdown: { [key: string]: number } = {};
-                      trials.forEach(trial => {
-                        const key = breakdownBy === 'enrollment'
-                          ? trial.enrollmentStatus
-                          : trial[breakdownBy] as string;
-                        breakdown[key] = (breakdown[key] || 0) + 1;
-                      });
-
-                      const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
-                      return Object.entries(breakdown)
-                        .filter(([, value]) => value > 0)
-                        .map(([key, value], index) => ({
-                          name: key,
-                          value,
-                          color: colors[index % colors.length]
-                        }));
-                    })()}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={90}
-                    paddingAngle={2}
-                    dataKey="value"
-                    label={renderLabel}
-                    labelLine={false}
-                  >
-                    {(breakdownBy === 'none' ? [
-                      { name: 'Total', color: '#3b82f6' }
-                    ] : (() => {
-                      const breakdown: { [key: string]: number } = {};
-                      trials.forEach(trial => {
-                        const key = breakdownBy === 'enrollment'
-                          ? trial.enrollmentStatus
-                          : trial[breakdownBy] as string;
-                        breakdown[key] = (breakdown[key] || 0) + 1;
-                      });
-
-                      const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
-                      return Object.entries(breakdown)
-                        .filter(([, value]) => value > 0)
-                        .map(([key], index) => ({
-                          name: key,
-                          color: colors[index % colors.length]
-                        }));
-                    })()).map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Center Text - Total Trials */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center">
-                <div className="text-4xl font-bold">{totalTrials}</div>
-                <div className="text-xs text-muted-foreground">Total Trials</div>
+        {chartData.length > 0 && categories.length > 0 ? (
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={chartData}
+                margin={{
+                  top: 10,
+                  right: 10,
+                  left: 2,
+                  bottom: 10,
+                }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="month"
+                  tick={{ fontSize: 12 }}
+                />
+                <YAxis
+                  domain={[0, 100]}
+                  tickFormatter={(value) => `${value}%`}
+                  tick={{ fontSize: 12 }}
+                  width={30}
+                />
+                <Tooltip
+                  formatter={formatTooltipValue}
+                  labelFormatter={formatTooltipLabel}
+                />
+                {categories.map((category, index) => (
+                  <Line
+                    key={category}
+                    type="monotone"
+                    dataKey={category}
+                    stroke={colors[index % colors.length]}
+                    strokeWidth={3}
+                    dot={{ fill: colors[index % colors.length], strokeWidth: 2, r: 4 }}
+                    name={category}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <div className="h-80 flex items-center justify-center text-muted-foreground">
+            <div className="text-center">
+              <div>No data available for the selected period</div>
+              <div className="text-xs mt-2">
+                Data points: {chartData.length}, Categories: {categories.length}
               </div>
             </div>
           </div>
+        )}
 
-          <div className="border-t pt-2">
-            <div className="text-xs text-muted-foreground mb-1">
-              Breakdown by {breakdownBy === 'none' ? 'None' :
-                breakdownBy === 'grade' ? 'Grade' :
-                breakdownBy === 'region' ? 'Region' :
-                breakdownBy === 'channel' ? 'Channel' :
-                breakdownBy === 'trialVersion' ? 'Trial Version' :
-                breakdownBy === 'enrollment' ? 'Enrollment' : breakdownBy} • Showing volume breakdown
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {chartData.map((item) => (
-                <div key={item.name} className="flex items-center gap-1 text-xs">
-                  <div
-                    className="w-3 h-3 rounded"
-                    style={{ backgroundColor: item.color }}
-                  ></div>
-                  <span>{item.name}</span>
-                </div>
-              ))}
-            </div>
+        <div className="border-t pt-2">
+          <div className="text-xs text-muted-foreground mb-1">
+            Breakdown by {getBreakdownLabel(breakdownBy)} • Showing conversion rates per month
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {categories.map((category, index) => (
+              <div key={category} className="flex items-center gap-1 text-xs">
+                <div
+                  className="w-3 h-3 rounded"
+                  style={{ backgroundColor: colors[index % colors.length] }}
+                />
+                <span>{category}</span>
+              </div>
+            ))}
           </div>
         </div>
       </CardContent>

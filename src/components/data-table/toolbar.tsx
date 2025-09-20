@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { DataTableViewOptions } from "./view-options";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { ConversationCard } from "@/components/ui/conversation-card";
+import { ChartsCard } from "@/components/ui/charts-card";
+import { VolumeChartsCard } from "@/components/ui/volume-trends-card";
 import { Search } from "lucide-react";
 import type { TableConfig } from "./utils/table-config";
 import type { TrialWithStatus } from "@/lib/types";
@@ -85,14 +87,34 @@ export function DataTableToolbar<TData>({
       </div>
 
       {config.enableSearch && (
-        <div className="pb-2">
-          <ConversationCard
-            trials={filteredData}
-            isFiltered={isFiltered || !!hasDateFilter || !!globalFilter}
-            searchTerm={globalFilter}
-            dateRange={dateRange}
-            columnFilters={table.getState().columnFilters}
-          />
+        <div className="pb-2 grid grid-cols-1 lg:grid-cols-20 gap-4">
+          <div className="lg:col-span-6">
+            <ConversationCard
+              trials={filteredData}
+              isFiltered={isFiltered || !!hasDateFilter || !!globalFilter}
+              searchTerm={globalFilter}
+              dateRange={dateRange}
+              columnFilters={table.getState().columnFilters}
+            />
+          </div>
+          <div className="lg:col-span-7">
+            <ChartsCard
+              trials={filteredData}
+              isFiltered={isFiltered || !!hasDateFilter || !!globalFilter}
+              dateRange={dateRange}
+              searchTerm={globalFilter}
+              columnFilters={table.getState().columnFilters}
+            />
+          </div>
+          <div className="lg:col-span-7">
+            <VolumeChartsCard
+              trials={filteredData}
+              isFiltered={isFiltered || !!hasDateFilter || !!globalFilter}
+              dateRange={dateRange}
+              searchTerm={globalFilter}
+              columnFilters={table.getState().columnFilters}
+            />
+          </div>
         </div>
       )}
     </div>
