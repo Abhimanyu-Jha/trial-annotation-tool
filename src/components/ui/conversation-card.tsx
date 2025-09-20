@@ -30,7 +30,7 @@ export function ConversationCard({
   dateRange,
   columnFilters = []
 }: ConversationCardProps) {
-  const [breakdownBy, setBreakdownBy] = useState<BreakdownType>('none');
+  const [breakdownBy, setBreakdownBy] = useState<BreakdownType>('enrollment');
   const totalTrials = trials.length;
 
 

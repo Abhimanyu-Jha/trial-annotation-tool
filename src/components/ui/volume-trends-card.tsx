@@ -30,7 +30,7 @@ export function VolumeChartsCard({
   searchTerm,
   columnFilters = []
 }: VolumeChartsCardProps) {
-  const [breakdownBy, setBreakdownBy] = useState<BreakdownType>('none');
+  const [breakdownBy, setBreakdownBy] = useState<BreakdownType>('grade');
 
   const chartData = useMemo(() => {
     if (trials.length === 0) return [];

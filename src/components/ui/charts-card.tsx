@@ -30,7 +30,7 @@ export function ChartsCard({
   searchTerm,
   columnFilters = []
 }: ChartsCardProps) {
-  const [breakdownBy, setBreakdownBy] = useState<BreakdownType>('none');
+  const [breakdownBy, setBreakdownBy] = useState<BreakdownType>('region');
 
   const chartData = useMemo(() => {
     if (trials.length === 0) return [];
