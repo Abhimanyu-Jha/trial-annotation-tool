@@ -54,11 +54,13 @@ export default function AnnotatePage() {
   const [annotationEnd, setAnnotationEnd] = useState<number | null>(null);
   const [annotationContent, setAnnotationContent] = useState('');
   const [annotationPart, setAnnotationPart] = useState<'Trial Part 1' | 'Trial Part 2' | 'Trial Part 3'>('Trial Part 1');
+  const [annotationEmotion, setAnnotationEmotion] = useState<'positive' | 'negative'>('negative');
 
   // Editing annotation state
   const [editingAnnotation, setEditingAnnotation] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [editPart, setEditPart] = useState<'Trial Part 1' | 'Trial Part 2' | 'Trial Part 3'>('Trial Part 1');
+  const [editEmotion, setEditEmotion] = useState<'positive' | 'negative'>('negative');
 
   // Animation state for newly created annotations
   const [newlyCreatedAnnotation, setNewlyCreatedAnnotation] = useState<string | null>(null);
@@ -272,6 +274,7 @@ export default function AnnotatePage() {
       trialId: trialId,
       reviewerId: 'rev-001',
       trialPart: annotationPart,
+      emotion: annotationEmotion,
       timestamp: {
         start: annotationStart,
         end: annotationEnd || undefined
@@ -326,6 +329,7 @@ export default function AnnotatePage() {
     setAnnotationEnd(null);
     setAnnotationContent('');
     setAnnotationPart('Trial Part 1');
+    setAnnotationEmotion('negative');
   };
 
   const startAnnotation = () => {
@@ -356,6 +360,7 @@ export default function AnnotatePage() {
     setEditingAnnotation(annotation.annotationId);
     setEditContent(annotation.content);
     setEditPart(annotation.trialPart);
+    setEditEmotion(annotation.emotion);
     setActiveTab('annotations');
   };
 
@@ -365,7 +370,7 @@ export default function AnnotatePage() {
     setAnnotations(prev => {
       const updatedAnnotations = prev.map(ann =>
         ann.annotationId === editingAnnotation
-          ? { ...ann, content: editContent, trialPart: editPart, updatedAt: new Date().toISOString() }
+          ? { ...ann, content: editContent, trialPart: editPart, emotion: editEmotion, updatedAt: new Date().toISOString() }
           : ann
       );
       // Sort annotations chronologically by start time
@@ -379,6 +384,7 @@ export default function AnnotatePage() {
     setEditingAnnotation(null);
     setEditContent('');
     setEditPart('Trial Part 1');
+    setEditEmotion('negative');
   };
 
   const getReviewerName = (reviewerId: string) => {
@@ -510,10 +516,11 @@ export default function AnnotatePage() {
                         {/* Annotation markers - dots inside the seekbar */}
                         {annotations.map(annotation => {
                           const position = duration ? (annotation.timestamp.start / duration) * 100 : 0;
+                          const emotionColor = annotation.emotion === 'positive' ? 'bg-green-500' : 'bg-orange-500';
                           return (
                             <div
                               key={annotation.annotationId}
-                              className="absolute w-1 h-1 bg-orange-500 rounded-full cursor-pointer z-10"
+                              className={`absolute w-1 h-1 ${emotionColor} rounded-full cursor-pointer z-10`}
                               style={{
                                 left: `${Math.max(2, Math.min(98, position))}%`,
                                 top: '50%',
@@ -763,30 +770,44 @@ export default function AnnotatePage() {
                                     <div className="grid grid-cols-2 gap-3">
                                       <div>
                                         <label className="text-xs font-medium text-muted-foreground">Start Time</label>
-                                        <div className="font-mono text-sm bg-transparent dark:bg-input/30 p-2 rounded border">
+                                        <div className="font-mono text-sm bg-background p-2 rounded border text-foreground">
                                           {annotationStart !== null ? formatDuration(Math.floor(annotationStart)) : '--:--'}
                                         </div>
                                       </div>
                                       <div>
                                         <label className="text-xs font-medium text-muted-foreground">End Time</label>
-                                        <div className="font-mono text-sm bg-transparent dark:bg-input/30 p-2 rounded border">
+                                        <div className="font-mono text-sm bg-background p-2 rounded border text-foreground">
                                           {annotationEnd !== null ? formatDuration(Math.floor(annotationEnd)) : '--:--'}
                                         </div>
                                       </div>
                                     </div>
 
-                                    <div>
-                                      <label className="text-xs font-medium text-muted-foreground">Trial Part</label>
-                                      <Select value={annotationPart} onValueChange={(value: string) => setAnnotationPart(value as "Trial Part 1" | "Trial Part 2" | "Trial Part 3")}>
-                                        <SelectTrigger className="h-8">
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="Trial Part 1">Trial Part 1</SelectItem>
-                                          <SelectItem value="Trial Part 2">Trial Part 2</SelectItem>
-                                          <SelectItem value="Trial Part 3">Trial Part 3</SelectItem>
-                                        </SelectContent>
-                                      </Select>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                        <label className="text-xs font-medium text-muted-foreground">Trial Part</label>
+                                        <Select value={annotationPart} onValueChange={(value: string) => setAnnotationPart(value as "Trial Part 1" | "Trial Part 2" | "Trial Part 3")}>
+                                          <SelectTrigger className="h-8 bg-background dark:bg-background">
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="Trial Part 1">Trial Part 1</SelectItem>
+                                            <SelectItem value="Trial Part 2">Trial Part 2</SelectItem>
+                                            <SelectItem value="Trial Part 3">Trial Part 3</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <div>
+                                        <label className="text-xs font-medium text-muted-foreground">Emotion</label>
+                                        <Select value={annotationEmotion} onValueChange={(value: string) => setAnnotationEmotion(value as "positive" | "negative")}>
+                                          <SelectTrigger className="h-8 bg-background dark:bg-background">
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="negative">Negative</SelectItem>
+                                            <SelectItem value="positive">Positive</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
                                     </div>
 
                                     <div>
@@ -809,7 +830,7 @@ export default function AnnotatePage() {
                                           // Remove E key handling from textarea since it should only work globally when not typing
                                         }}
                                         placeholder="Enter your annotation here... (Press Enter to save, Shift+Enter for new line)"
-                                        className="min-h-[80px] text-sm"
+                                        className="min-h-[80px] text-sm bg-background dark:bg-background"
                                       />
                                     </div>
 
@@ -854,30 +875,44 @@ export default function AnnotatePage() {
                                   <div className="grid grid-cols-2 gap-3">
                                     <div>
                                       <label className="text-xs font-medium text-muted-foreground">Start Time</label>
-                                      <div className="font-mono text-sm bg-transparent dark:bg-input/30 p-2 rounded border">
+                                      <div className="font-mono text-sm bg-background p-2 rounded border text-foreground">
                                         {formatDuration(Math.floor(annotation.timestamp.start))}
                                       </div>
                                     </div>
                                     <div>
                                       <label className="text-xs font-medium text-muted-foreground">End Time</label>
-                                      <div className="font-mono text-sm bg-transparent dark:bg-input/30 p-2 rounded border">
+                                      <div className="font-mono text-sm bg-background p-2 rounded border text-foreground">
                                         {annotation.timestamp.end ? formatDuration(Math.floor(annotation.timestamp.end)) : '--:--'}
                                       </div>
                                     </div>
                                   </div>
 
-                                  <div>
-                                    <label className="text-xs font-medium text-muted-foreground">Trial Part</label>
-                                    <Select value={editPart} onValueChange={(value: string) => setEditPart(value as "Trial Part 1" | "Trial Part 2" | "Trial Part 3")}>
-                                      <SelectTrigger className="h-8">
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="Trial Part 1">Trial Part 1</SelectItem>
-                                        <SelectItem value="Trial Part 2">Trial Part 2</SelectItem>
-                                        <SelectItem value="Trial Part 3">Trial Part 3</SelectItem>
-                                      </SelectContent>
-                                    </Select>
+                                  <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                      <label className="text-xs font-medium text-muted-foreground">Trial Part</label>
+                                      <Select value={editPart} onValueChange={(value: string) => setEditPart(value as "Trial Part 1" | "Trial Part 2" | "Trial Part 3")}>
+                                        <SelectTrigger className="h-8 bg-background dark:bg-background">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="Trial Part 1">Trial Part 1</SelectItem>
+                                          <SelectItem value="Trial Part 2">Trial Part 2</SelectItem>
+                                          <SelectItem value="Trial Part 3">Trial Part 3</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <div>
+                                      <label className="text-xs font-medium text-muted-foreground">Emotion</label>
+                                      <Select value={editEmotion} onValueChange={(value: string) => setEditEmotion(value as "positive" | "negative")}>
+                                        <SelectTrigger className="h-8 bg-background dark:bg-background">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="negative">Negative</SelectItem>
+                                          <SelectItem value="positive">Positive</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
                                   </div>
 
                                   <div>
@@ -898,7 +933,7 @@ export default function AnnotatePage() {
                                         }
                                       }}
                                       placeholder="Enter your annotation here..."
-                                      className="min-h-[80px] text-sm"
+                                      className="min-h-[80px] text-sm bg-background dark:bg-background"
                                     />
                                   </div>
 

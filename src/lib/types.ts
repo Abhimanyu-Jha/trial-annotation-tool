@@ -38,6 +38,7 @@ export interface Annotation {
   trialId: string;
   reviewerId: string;
   trialPart: 'Trial Part 1' | 'Trial Part 2' | 'Trial Part 3';
+  emotion: 'positive' | 'negative';
   timestamp: {
     start: number;
     end?: number;

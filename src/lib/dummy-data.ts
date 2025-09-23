@@ -199,6 +199,7 @@ export const dummyAnnotations: Annotation[] = [
     trialId: 'trial-001',
     reviewerId: 'rev-001',
     trialPart: 'Trial Part 1',
+    emotion: 'positive',
     timestamp: { start: 0, end: 15 },
     content: 'Great introduction by the tutor. Warm and welcoming tone that puts the student at ease.',
     transcriptSnippet: {
@@ -233,6 +234,7 @@ export const dummyAnnotations: Annotation[] = [
     trialId: 'trial-001',
     reviewerId: 'rev-001',
     trialPart: 'Trial Part 2',
+    emotion: 'positive',
     timestamp: { start: 25, end: 35 },
     content: 'Excellent positive reinforcement. The tutor validates the student\'s correct answer and explains the reasoning.',
     transcriptSnippet: {
@@ -261,6 +263,7 @@ export const dummyAnnotations: Annotation[] = [
     trialId: 'trial-002',
     reviewerId: 'rev-002',
     trialPart: 'Trial Part 1',
+    emotion: 'negative',
     timestamp: { start: 6, end: 22 },
     content: 'Good parent involvement and tutor\'s reassuring approach to address student anxiety about algebra.',
     transcriptSnippet: {
