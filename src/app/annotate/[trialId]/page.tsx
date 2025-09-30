@@ -15,9 +15,10 @@ import {
   dummyAnnotations,
   formatDuration,
   formatDate,
-  dummyReviewers
+  dummyReviewers,
+  parseAITimestamp
 } from '@/lib/dummy-data';
-import { Annotation } from '@/lib/types';
+import { Annotation, AIAnalysis, Trial } from '@/lib/types';
 import { ThemeToggle } from '@/components/theme-toggle';
 import {
   ArrowLeft,
@@ -68,14 +69,49 @@ export default function AnnotatePage() {
   // Ref for textarea to auto-focus
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Tab state for transcript/annotations
-  const [activeTab, setActiveTab] = useState<'transcript' | 'annotations'>('transcript');
+  // Tab state for transcript/annotations/ai-analysis
+  const [activeTab, setActiveTab] = useState<'transcript' | 'annotations' | 'ai-analysis'>('transcript');
+
+  // AI Analysis state
+  const [aiAnalysis, setAIAnalysis] = useState<AIAnalysis | null>(null);
+  const [loadingAnalysis, setLoadingAnalysis] = useState(false);
 
   // Data
-  const trial = useMemo(() =>
-    dummyTrials.find(t => t.trialId === trialId),
-    [trialId]
-  );
+  const [trial, setTrial] = useState<Trial | null>(null);
+
+  // Fetch trial data
+  useEffect(() => {
+    // First try to find in dummy trials (for backwards compatibility)
+    const dummyTrial = dummyTrials.find(t => t.trialId === trialId);
+
+    if (dummyTrial) {
+      setTrial(dummyTrial);
+    } else {
+      // If not found in dummy data, create a trial object with API video URL
+      setTrial({
+        trialId: trialId,
+        videoUrl: `/api/trials/${trialId}/video`,
+        transcriptUrl: `/api/trials/${trialId}/transcript`,
+        studentId: trialId,
+        studentName: trialId.split('-')[0].charAt(0).toUpperCase() + trialId.split('-')[0].slice(1),
+        tutorId: 'tutor-001',
+        tutorName: 'AI Analysis',
+        grade: trialId.includes('g1') ? 'Grade 1' :
+               trialId.includes('g2') ? 'Grade 2' :
+               trialId.includes('g3') ? 'Grade 3' :
+               trialId.includes('g4') ? 'Grade 4' :
+               trialId.includes('g5') ? 'Grade 5' :
+               trialId.includes('g6') ? 'Grade 6' :
+               trialId.includes('g7') ? 'Grade 7' :
+               trialId.includes('g8') ? 'Grade 8' : 'Grade 3',
+        trialDate: new Date().toISOString(),
+        region: 'NAM',
+        channel: 'perf-meta',
+        duration: 3600,
+        trialVersion: 'v3.2'
+      });
+    }
+  }, [trialId]);
 
   const transcript = useMemo(() =>
     dummyTranscripts.find(t => t.trialId === trialId),
@@ -90,6 +126,26 @@ export default function AnnotatePage() {
       setAnnotations(filteredAnnotations);
     }
   }, [trial, trialId]);
+
+  // Fetch AI analysis
+  useEffect(() => {
+    async function fetchAIAnalysis() {
+      setLoadingAnalysis(true);
+      try {
+        const response = await fetch(`/api/trials/${trialId}/analysis`);
+        if (response.ok) {
+          const data = await response.json();
+          setAIAnalysis(data);
+        }
+      } catch (error) {
+        console.error('Error fetching AI analysis:', error);
+      } finally {
+        setLoadingAnalysis(false);
+      }
+    }
+
+    fetchAIAnalysis();
+  }, [trialId]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -534,6 +590,35 @@ export default function AnnotatePage() {
                             />
                           );
                         })}
+
+                        {/* AI Analysis issue markers - dots inside the seekbar */}
+                        {aiAnalysis?.issues?.map((issue, index) => {
+                          const issueTime = parseAITimestamp(issue.timestamp);
+                          const position = duration ? (issueTime / duration) * 100 : 0;
+                          const severityColor =
+                            issue.severity.toLowerCase() === 'critical' ? 'bg-red-500' :
+                            issue.severity.toLowerCase() === 'high' ? 'bg-orange-500' :
+                            issue.severity.toLowerCase() === 'medium' ? 'bg-yellow-500' :
+                            'bg-gray-400';
+
+                          return (
+                            <div
+                              key={`ai-issue-${index}`}
+                              className={`absolute w-1.5 h-1.5 ${severityColor} rounded-full cursor-pointer z-10 border border-white dark:border-gray-800`}
+                              style={{
+                                left: `${Math.max(2, Math.min(98, position))}%`,
+                                top: '50%',
+                                transform: 'translateY(-50%) translateX(-50%)'
+                              }}
+                              title={`${issue.severity}: ${issue.theme} - ${issue.quote.substring(0, 50)}...`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                seekTo(issueTime);
+                                setActiveTab('ai-analysis');
+                              }}
+                            />
+                          );
+                        })}
                       </div>
 
                       {/* Hidden range input for accessibility */}
@@ -689,6 +774,16 @@ export default function AnnotatePage() {
                       }`}
                     >
                       Annotations ({annotations.length})
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('ai-analysis')}
+                      className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                        activeTab === 'ai-analysis'
+                          ? 'border-primary text-primary'
+                          : 'border-transparent text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      AI Analysis {aiAnalysis && `(${aiAnalysis.issues?.length || 0})`}
                     </button>
                   </div>
                 </div>
@@ -1010,6 +1105,81 @@ export default function AnnotatePage() {
                         );
                       });
                         })()
+                      )}
+                    </>
+                  )}
+
+                  {activeTab === 'ai-analysis' && (
+                    <>
+                      {loadingAnalysis ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="text-muted-foreground text-sm">Loading AI analysis...</div>
+                        </div>
+                      ) : !aiAnalysis ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="text-muted-foreground text-sm">No AI analysis available for this trial.</div>
+                        </div>
+                      ) : aiAnalysis.issues && aiAnalysis.issues.length === 0 ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="text-muted-foreground text-sm">No issues found in AI analysis.</div>
+                        </div>
+                      ) : (
+                        aiAnalysis.issues?.map((issue, index) => {
+                          const issueTimestamp = parseAITimestamp(issue.timestamp);
+                          const severityColor =
+                            issue.severity.toLowerCase() === 'critical' ? 'bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-900/20 dark:text-red-300 dark:hover:bg-red-900/30' :
+                            issue.severity.toLowerCase() === 'high' ? 'bg-orange-100 text-orange-800 hover:bg-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:hover:bg-orange-900/30' :
+                            issue.severity.toLowerCase() === 'medium' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300 dark:hover:bg-yellow-900/30' :
+                            'bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-900/20 dark:text-gray-300 dark:hover:bg-gray-900/30';
+
+                          return (
+                            <div
+                              key={index}
+                              className="p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                              onClick={() => seekTo(issueTimestamp)}
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <Badge variant="outline" className="text-xs font-mono">
+                                    {issue.timestamp}
+                                  </Badge>
+                                  <Badge variant="outline" className="text-xs">
+                                    {issue.speaker}
+                                  </Badge>
+                                  <Badge className={`text-xs ${severityColor}`}>
+                                    {issue.severity}
+                                  </Badge>
+                                </div>
+                              </div>
+
+                              <div className="mb-2">
+                                <div className="text-sm font-semibold text-primary">{issue.theme}</div>
+                              </div>
+
+                              <div className="space-y-2 text-sm">
+                                <div>
+                                  <span className="font-medium text-muted-foreground">Quote: </span>
+                                  <span className="italic">&quot;{issue.quote}&quot;</span>
+                                </div>
+
+                                <div>
+                                  <span className="font-medium text-muted-foreground">Context: </span>
+                                  <span>{issue.context}</span>
+                                </div>
+
+                                <div>
+                                  <span className="font-medium text-muted-foreground">Issue: </span>
+                                  <span>{issue.justification}</span>
+                                </div>
+
+                                <div className="pt-2 border-t">
+                                  <span className="font-medium text-green-600 dark:text-green-400">Suggested Alternative: </span>
+                                  <span className="text-green-700 dark:text-green-300">{issue.alternative}</span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
                       )}
                     </>
                   )}
