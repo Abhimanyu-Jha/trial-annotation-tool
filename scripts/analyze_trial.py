@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
 Trial Analysis Script using Gemini 2.5 Pro
-Usage: python analyze_trial.py <trial_id>
+Usage: python analyze_trial.py <trial_id> [--passes N]
 Example: python analyze_trial.py mousa-g1
+Example: python analyze_trial.py mousa-g1 --passes 10
 
 Requirements:
     pip install google-genai
@@ -14,6 +15,7 @@ Set API key:
 import os
 import sys
 import json
+import argparse
 from pathlib import Path
 from google import genai
 from datetime import datetime
@@ -38,9 +40,9 @@ def load_prompt():
     with open(prompt_path, 'r') as f:
         return f.read()
 
-def analyze_trial(trial_id):
+def analyze_trial(trial_id, num_passes=3):
     """Analyze a trial using Gemini API"""
-    print(f"Analyzing trial: {trial_id}")
+    print(f"Analyzing trial: {trial_id} with {num_passes} passes")
 
     # Check trial directory exists
     trial_dir = TRIALS_DIR / trial_id
@@ -74,9 +76,9 @@ def analyze_trial(trial_id):
     all_issues = []
     pass_responses = []
 
-    for pass_num in range(1, 4):
+    for pass_num in range(1, num_passes + 1):
         print(f"\n{'='*60}")
-        print(f"PASS {pass_num}/3")
+        print(f"PASS {pass_num}/{num_passes}")
         print(f"{'='*60}")
 
         # Build prompt for this pass
@@ -147,7 +149,7 @@ DO NOT include any of these previously identified issues again. Find NEW issues 
         "trialId": trial_id,
         "timestamp": datetime.now().isoformat(),
         "modelVersion": "gemini-2.5-pro",
-        "analysisMethod": "multi-pass-3x",
+        "analysisMethod": f"multi-pass-{num_passes}x",
         "status": "completed" if len(all_issues) > 0 else "failed",
         "issues": all_issues,
         "passDetails": pass_responses
@@ -165,7 +167,7 @@ DO NOT include any of these previously identified issues again. Find NEW issues 
     print(f"\nSummary:")
     print(f"  Trial ID: {trial_id}")
     print(f"  Output: {output_path}")
-    print(f"  Analysis Method: 3-Pass Multi-Pass")
+    print(f"  Analysis Method: {num_passes}-Pass Multi-Pass")
     print(f"  Total Issues Found: {len(all_issues)}")
     print(f"\nIssues by Pass:")
     for detail in pass_responses:
@@ -178,9 +180,20 @@ DO NOT include any of these previously identified issues again. Find NEW issues 
     return analysis_result
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python analyze_trial.py <trial_id>")
-        print("Example: python analyze_trial.py mousa-g1")
+    parser = argparse.ArgumentParser(
+        description="Trial Analysis Script using Gemini 2.5 Pro",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="Example: python analyze_trial.py mousa-g1 --passes 10"
+    )
+    parser.add_argument("trial_id", help="Trial ID to analyze")
+    parser.add_argument("--passes", type=int, default=3, help="Number of analysis passes (default: 3)")
+
+    args = parser.parse_args()
+
+    # Show available trials if trial not found
+    trial_dir = TRIALS_DIR / args.trial_id
+    if not trial_dir.exists():
+        print(f"Error: Trial '{args.trial_id}' not found")
         print("\nAvailable trials:")
         if TRIALS_DIR.exists():
             for trial_dir in sorted(TRIALS_DIR.iterdir()):
@@ -188,5 +201,4 @@ if __name__ == "__main__":
                     print(f"  - {trial_dir.name}")
         sys.exit(1)
 
-    trial_id = sys.argv[1]
-    analyze_trial(trial_id)
+    analyze_trial(args.trial_id, args.passes)

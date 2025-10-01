@@ -81,6 +81,7 @@ export default function AnnotatePage() {
   // AI Analysis filter state
   const [selectedDomains, setSelectedDomains] = useState<string[]>([]);
   const [selectedThemes, setSelectedThemes] = useState<string[]>([]);
+  const [selectedPasses, setSelectedPasses] = useState<number[]>([]);
 
   // Data
   const [trial, setTrial] = useState<Trial | null>(null);
@@ -587,9 +588,18 @@ export default function AnnotatePage() {
     }
   };
 
+  const togglePass = (pass: number) => {
+    setSelectedPasses(prev =>
+      prev.includes(pass)
+        ? prev.filter(p => p !== pass)
+        : [...prev, pass]
+    );
+  };
+
   const clearAllFilters = () => {
     setSelectedDomains([]);
     setSelectedThemes([]);
+    setSelectedPasses([]);
   };
 
   if (!trial) {
@@ -1268,9 +1278,9 @@ export default function AnnotatePage() {
                                 <Button variant="outline" size="sm" className="h-8 gap-2">
                                   <Filter className="h-3.5 w-3.5" />
                                   Filter
-                                  {selectedThemes.length > 0 && (
+                                  {(selectedThemes.length > 0 || selectedPasses.length > 0) && (
                                     <Badge variant="secondary" className="ml-1 h-5 px-1 text-xs">
-                                      {selectedThemes.length}
+                                      {selectedThemes.length + selectedPasses.length}
                                     </Badge>
                                   )}
                                 </Button>
@@ -1279,7 +1289,7 @@ export default function AnnotatePage() {
                                 <div className="space-y-3">
                                   <div className="flex items-center justify-between">
                                     <h4 className="text-sm font-medium">Filter Issues</h4>
-                                    {selectedThemes.length > 0 && (
+                                    {(selectedThemes.length > 0 || selectedPasses.length > 0) && (
                                       <Button
                                         variant="ghost"
                                         size="sm"
@@ -1289,6 +1299,37 @@ export default function AnnotatePage() {
                                         Clear
                                       </Button>
                                     )}
+                                  </div>
+
+                                  {/* Pass Filter */}
+                                  <div className="border rounded p-2">
+                                    <div className="text-xs font-medium mb-1.5">Analysis Pass</div>
+                                    <div className="flex gap-1.5 flex-wrap">
+                                      {Array.from(new Set(aiAnalysis.issues?.map(issue => issue.analysisPass).filter(Boolean))).sort((a, b) => a - b).map(pass => {
+                                        const issuesInPass = aiAnalysis.issues?.filter(
+                                          issue => issue.analysisPass === pass
+                                        ).length || 0;
+                                        if (issuesInPass === 0) return null;
+
+                                        return (
+                                          <label
+                                            key={pass}
+                                            className="flex items-center gap-1.5 cursor-pointer px-2 py-1 border rounded hover:bg-accent"
+                                          >
+                                            <input
+                                              type="checkbox"
+                                              checked={selectedPasses.includes(pass)}
+                                              onChange={() => togglePass(pass)}
+                                              className="rounded border-gray-300 h-3 w-3"
+                                            />
+                                            <span className="text-xs">{pass}</span>
+                                            <Badge variant="secondary" className="h-4 px-1 text-[10px]">
+                                              {issuesInPass}
+                                            </Badge>
+                                          </label>
+                                        );
+                                      })}
+                                    </div>
                                   </div>
 
                                   <div className="space-y-1.5 max-h-96 overflow-y-auto">
@@ -1354,8 +1395,19 @@ export default function AnnotatePage() {
                           </div>
 
                           {/* Active Filter Chips */}
-                          {selectedThemes.length > 0 && (
+                          {(selectedThemes.length > 0 || selectedPasses.length > 0) && (
                             <div className="flex flex-wrap gap-1 mb-3 pb-3 border-b">
+                              {selectedPasses.map(pass => (
+                                <Badge
+                                  key={`pass-${pass}`}
+                                  variant="secondary"
+                                  className="h-6 px-2 text-xs gap-1 cursor-pointer hover:bg-secondary/80"
+                                  onClick={() => togglePass(pass)}
+                                >
+                                  {pass}
+                                  <X className="h-3 w-3" />
+                                </Badge>
+                              ))}
                               {selectedThemes.map(theme => {
                                 const domain = getDomainForTheme(theme);
                                 return (
@@ -1375,10 +1427,22 @@ export default function AnnotatePage() {
 
                           {/* Issues List */}
                           {(() => {
-                            // Filter issues based on selected themes
-                            const filteredIssues = selectedThemes.length > 0
-                              ? aiAnalysis.issues?.filter(issue => selectedThemes.includes(issue.theme))
-                              : aiAnalysis.issues;
+                            // Filter issues based on selected themes and passes
+                            let filteredIssues = aiAnalysis.issues;
+
+                            // Filter by themes if any are selected
+                            if (selectedThemes.length > 0) {
+                              filteredIssues = filteredIssues?.filter(issue =>
+                                selectedThemes.includes(issue.theme)
+                              );
+                            }
+
+                            // Filter by passes if any are selected
+                            if (selectedPasses.length > 0) {
+                              filteredIssues = filteredIssues?.filter(issue =>
+                                issue.analysisPass && selectedPasses.includes(issue.analysisPass)
+                              );
+                            }
 
                             if (!filteredIssues || filteredIssues.length === 0) {
                               return (
@@ -1417,7 +1481,7 @@ export default function AnnotatePage() {
                                     </Badge>
                                     {issue.analysisPass && (
                                       <Badge variant="secondary" className="text-xs">
-                                        Pass {issue.analysisPass}
+                                        {issue.analysisPass}
                                       </Badge>
                                     )}
                                   </div>
