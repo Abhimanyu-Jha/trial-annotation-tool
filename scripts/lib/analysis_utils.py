@@ -33,9 +33,9 @@ def setup_paths(trial_id):
 def load_prompt(prompt_id):
     """Load a prompt by its ID"""
     PROJECT_ROOT = Path(__file__).parent.parent.parent
-    PROMPT_ASSETS_DIR = PROJECT_ROOT / "data" / "prompt-assets"
+    PROMPTS_DIR = PROJECT_ROOT / "prompts"
 
-    prompt_path = PROMPT_ASSETS_DIR / f"prompt-{prompt_id}.txt"
+    prompt_path = PROMPTS_DIR / f"prompt-{prompt_id}.txt"
 
     if not prompt_path.exists():
         raise FileNotFoundError(f"Prompt file not found: {prompt_path}")
