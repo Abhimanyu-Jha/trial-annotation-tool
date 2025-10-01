@@ -68,51 +68,90 @@ def analyze_trial(trial_id):
     playbook_file = load_file_for_gemini(client, playbook_path)
 
     # Load prompt
-    prompt = load_prompt()
+    base_prompt = load_prompt()
 
-    # Generate analysis
-    print("Calling Gemini API...")
+    # Multi-pass analysis
+    all_issues = []
+    pass_responses = []
 
-    # Generate analysis with multimodal input
-    response = client.models.generate_content(
-        model="gemini-2.5-pro",
-        contents=[
-            guidebook_file,
-            playbook_file,
-            prompt,
-            transcript_file
-        ],
-    )
+    for pass_num in range(1, 4):
+        print(f"\n{'='*60}")
+        print(f"PASS {pass_num}/3")
+        print(f"{'='*60}")
 
-    # Parse response
+        # Build prompt for this pass
+        if pass_num == 1:
+            prompt = base_prompt
+        else:
+            # For passes 2 and 3, add instruction to exclude previous issues
+            previous_issues_summary = json.dumps(all_issues, indent=2)
+            prompt = f"""{base_prompt}
+
+IMPORTANT: This is Pass {pass_num} of the analysis. You have already identified the following issues in previous passes:
+
+{previous_issues_summary}
+
+DO NOT include any of these previously identified issues again. Find NEW issues that were not identified in previous passes. Focus on finding additional problems that may have been missed.
+"""
+
+        print(f"Calling Gemini API (Pass {pass_num})...")
+
+        # Generate analysis with multimodal input
+        response = client.models.generate_content(
+            model="gemini-2.5-pro",
+            contents=[
+                guidebook_file,
+                playbook_file,
+                prompt,
+                transcript_file
+            ],
+        )
+
+        # Parse response
+        try:
+            # Clean response if it has markdown code blocks
+            response_text = response.text.strip()
+            if response_text.startswith("```json"):
+                response_text = response_text[7:]
+            if response_text.startswith("```"):
+                response_text = response_text[3:]
+            if response_text.endswith("```"):
+                response_text = response_text[:-3]
+            response_text = response_text.strip()
+
+            parsed_issues = json.loads(response_text)
+
+            # Add pass metadata to each issue
+            for issue in parsed_issues:
+                issue["analysisPass"] = pass_num
+
+            print(f"✓ Pass {pass_num} complete: Found {len(parsed_issues)} new issues")
+            all_issues.extend(parsed_issues)
+            pass_responses.append({
+                "pass": pass_num,
+                "issuesFound": len(parsed_issues),
+                "rawResponse": response.text[:500] + "..."
+            })
+
+        except json.JSONDecodeError as e:
+            print(f"✗ Warning: Could not parse Pass {pass_num} response as JSON: {e}")
+            pass_responses.append({
+                "pass": pass_num,
+                "error": f"Invalid JSON response: {str(e)}",
+                "rawResponse": response.text[:500] + "..."
+            })
+
+    # Compile final analysis result
     analysis_result = {
         "analysisId": f"analysis-{trial_id}-{datetime.now().strftime('%Y%m%d-%H%M%S')}",
         "trialId": trial_id,
         "timestamp": datetime.now().isoformat(),
         "modelVersion": "gemini-2.5-pro",
-        "status": "completed",
-        "rawResponse": response.text
+        "analysisMethod": "multi-pass-3x",
+        "status": "completed" if len(all_issues) > 0 else "failed",
+        "issues": all_issues,
+        "passDetails": pass_responses
     }
-
-    # Try to parse JSON from response
-    try:
-        # Clean response if it has markdown code blocks
-        response_text = response.text.strip()
-        if response_text.startswith("```json"):
-            response_text = response_text[7:]
-        if response_text.startswith("```"):
-            response_text = response_text[3:]
-        if response_text.endswith("```"):
-            response_text = response_text[:-3]
-        response_text = response_text.strip()
-
-        parsed_analysis = json.loads(response_text)
-        analysis_result["issues"] = parsed_analysis
-    except json.JSONDecodeError as e:
-        print(f"Warning: Could not parse response as JSON: {e}")
-        print("Saving raw response for manual review")
-        analysis_result["status"] = "failed"
-        analysis_result["error"] = f"Invalid JSON response: {str(e)}"
 
     # Save analysis
     output_path = trial_dir / "ai-analysis.json"
@@ -120,15 +159,21 @@ def analyze_trial(trial_id):
     with open(output_path, 'w') as f:
         json.dump(analysis_result, f, indent=2)
 
-    print("Analysis complete!")
+    print(f"\n{'='*60}")
+    print("ANALYSIS COMPLETE!")
+    print(f"{'='*60}")
     print(f"\nSummary:")
     print(f"  Trial ID: {trial_id}")
     print(f"  Output: {output_path}")
-    if "issues" in analysis_result:
-        print(f"  Issues found: {len(analysis_result['issues'])}")
-    print(f"\nRaw response preview:")
-    print(response.text[:1000])
-    print("...")
+    print(f"  Analysis Method: 3-Pass Multi-Pass")
+    print(f"  Total Issues Found: {len(all_issues)}")
+    print(f"\nIssues by Pass:")
+    for detail in pass_responses:
+        if "error" in detail:
+            print(f"  Pass {detail['pass']}: ERROR - {detail['error']}")
+        else:
+            print(f"  Pass {detail['pass']}: {detail['issuesFound']} issues")
+    print(f"\nAnalysis saved to: {output_path}")
 
     return analysis_result
 

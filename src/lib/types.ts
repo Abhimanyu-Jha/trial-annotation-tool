@@ -150,6 +150,7 @@ export interface AIAnalysisIssue {
   context: string; // Situational context
   justification: string; // Why it's an issue
   alternative: string; // Suggested improvement
+  analysisPass?: number; // Which analysis pass found this issue (1, 2, or 3)
 }
 
 export interface AIAnalysis {

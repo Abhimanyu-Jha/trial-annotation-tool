@@ -7,8 +7,25 @@ import { Button } from "@/components/ui/button";
 import { DataTableColumnHeader } from "./column-header";
 import { formatDate } from "@/lib/dummy-data";
 import { TrialWithIssues } from "@/lib/types";
+import { Eye } from "lucide-react";
 
 export const issuesColumns: ColumnDef<TrialWithIssues>[] = [
+  {
+    id: "actions",
+    header: () => <div className="w-8"></div>,
+    cell: ({ row }) => {
+      const trial = row.original;
+      return (
+        <Link href={`/annotate/${trial.trialId}`}>
+          <Button variant="ghost" size="icon" className="h-8 w-8" title="View trial">
+            <Eye className="h-4 w-4" />
+          </Button>
+        </Link>
+      );
+    },
+    enableSorting: false,
+    enableHiding: false,
+  },
   {
     accessorKey: "studentName",
     header: ({ column }) => (
@@ -244,21 +261,5 @@ export const issuesColumns: ColumnDef<TrialWithIssues>[] = [
       );
     },
     enableSorting: false,
-  },
-  {
-    id: "actions",
-    header: "Actions",
-    cell: ({ row }) => {
-      const trial = row.original;
-      return (
-        <Link href={`/annotate/${trial.trialId}`}>
-          <Button variant="link" className="h-auto p-0 text-foreground hover:text-muted-foreground font-medium cursor-pointer">
-            View
-          </Button>
-        </Link>
-      );
-    },
-    enableSorting: false,
-    enableHiding: false,
   },
 ];

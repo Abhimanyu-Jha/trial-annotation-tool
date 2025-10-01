@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Kbd } from '@/components/ui/kbd';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   dummyTrials,
   dummyTranscripts,
@@ -32,7 +33,8 @@ import {
   Save,
   X,
   CornerDownLeft,
-  Edit
+  Edit,
+  Filter
 } from 'lucide-react';
 // Remove next-video import as we'll use standard HTML5 video for external URLs
 
@@ -70,11 +72,15 @@ export default function AnnotatePage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Tab state for transcript/annotations/ai-analysis
-  const [activeTab, setActiveTab] = useState<'transcript' | 'annotations' | 'ai-analysis'>('transcript');
+  const [activeTab, setActiveTab] = useState<'transcript' | 'annotations' | 'ai-analysis'>('ai-analysis');
 
   // AI Analysis state
   const [aiAnalysis, setAIAnalysis] = useState<AIAnalysis | null>(null);
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
+
+  // AI Analysis filter state
+  const [selectedDomains, setSelectedDomains] = useState<string[]>([]);
+  const [selectedThemes, setSelectedThemes] = useState<string[]>([]);
 
   // Data
   const [trial, setTrial] = useState<Trial | null>(null);
@@ -456,6 +462,136 @@ export default function AnnotatePage() {
     return name.substring(0, 2).toUpperCase();
   };
 
+  // Domain to themes mapping
+  const domainToThemesMap: Record<string, string[]> = {
+    'Parent Engagement': [
+      'Narrow Reframing',
+      'Scheduling & Pacing Rigidity',
+      'Failing to Address Parent Concerns',
+      'Mishandling Parent Selections',
+      'Role Abdication',
+    ],
+    'Student Engagement': [
+      'Using Vague Openers',
+      'Awkward Rapport Attempt',
+      'Failing to Sustain Conversation',
+      'Over-reliance on Closed-Ended Questions',
+      'Not Addressing Child First',
+      "Misusing Child's Name/Pronoun",
+      'Parent-Dominated Talk (Failure to Redirect)',
+    ],
+    'Pedagogical Effectiveness': [
+      'Pre-emptive Questioning',
+      'Using Leading Questions',
+      'Insufficient Scaffolding',
+      "Interrupting Student's Thought Process",
+      'Failing to Check for Understanding (CFU)',
+      'Incorrect Problem Assessment',
+      'Failing to Identify Foundational Gaps',
+      'Skipping Concepts Without Assessment',
+    ],
+    'Process & Platform Adherence': [
+      'Rushing or Skipping Key Sections',
+      'Discussing Topics on Wrong Slide',
+      'Failing to Involve Parent as Required',
+    ],
+    'Professionalism & Environment': [
+      'Low Energy / Unenthusiastic',
+      'Scripted or Robotic Delivery',
+      'Poor Lighting or Background',
+      'Poor Audio Quality',
+      'Unprofessional Affiliation Talk',
+    ],
+    'Linguistic & Communicative Competence': [
+      'Grammatical Errors',
+      'Non-Idiomatic Phrasing',
+      'Use of Non-Standard Pedagogical Terminology',
+      'Disfluent Speech / Overuse of Fillers',
+    ],
+    'Session Flags': [
+      'Pre-Trial Misalignment',
+    ],
+  };
+
+  // Map themes to domains
+  const getDomainForTheme = (theme: string): string => {
+    const domainMap: Record<string, string> = {
+      'Narrow Reframing': 'Parent Engagement',
+      'Scheduling & Pacing Rigidity': 'Parent Engagement',
+      'Failing to Address Parent Concerns': 'Parent Engagement',
+      'Mishandling Parent Selections': 'Parent Engagement',
+      'Using Vague Openers': 'Student Engagement',
+      'Awkward Rapport Attempt': 'Student Engagement',
+      'Failing to Sustain Conversation': 'Student Engagement',
+      'Over-reliance on Closed-Ended Questions': 'Student Engagement',
+      'Not Addressing Child First': 'Student Engagement',
+      "Misusing Child's Name/Pronoun": 'Student Engagement',
+      'Parent-Dominated Talk (Failure to Redirect)': 'Student Engagement',
+      'Pre-emptive Questioning': 'Pedagogical Effectiveness',
+      'Using Leading Questions': 'Pedagogical Effectiveness',
+      'Insufficient Scaffolding': 'Pedagogical Effectiveness',
+      "Interrupting Student's Thought Process": 'Pedagogical Effectiveness',
+      'Failing to Check for Understanding (CFU)': 'Pedagogical Effectiveness',
+      'Incorrect Problem Assessment': 'Pedagogical Effectiveness',
+      'Failing to Identify Foundational Gaps': 'Pedagogical Effectiveness',
+      'Skipping Concepts Without Assessment': 'Pedagogical Effectiveness',
+      'Rushing or Skipping Key Sections': 'Process & Platform Adherence',
+      'Discussing Topics on Wrong Slide': 'Process & Platform Adherence',
+      'Failing to Involve Parent as Required': 'Process & Platform Adherence',
+      'Low Energy / Unenthusiastic': 'Professionalism & Environment',
+      'Scripted or Robotic Delivery': 'Professionalism & Environment',
+      'Poor Lighting or Background': 'Professionalism & Environment',
+      'Poor Audio Quality': 'Professionalism & Environment',
+      'Unprofessional Affiliation Talk': 'Professionalism & Environment',
+      'Grammatical Errors': 'Linguistic & Communicative Competence',
+      'Non-Idiomatic Phrasing': 'Linguistic & Communicative Competence',
+      'Use of Non-Standard Pedagogical Terminology': 'Linguistic & Communicative Competence',
+      'Disfluent Speech / Overuse of Fillers': 'Linguistic & Communicative Competence',
+      'Role Abdication': 'Parent Engagement',
+      'Pre-Trial Misalignment': 'Session Flags',
+    };
+    return domainMap[theme] || 'General';
+  };
+
+  const toggleDomain = (domain: string) => {
+    if (selectedDomains.includes(domain)) {
+      // Remove domain and its themes
+      setSelectedDomains(prev => prev.filter(d => d !== domain));
+      setSelectedThemes(prev => prev.filter(t => !domainToThemesMap[domain]?.includes(t)));
+    } else {
+      // Add domain and all its themes
+      setSelectedDomains(prev => [...prev, domain]);
+      setSelectedThemes(prev => [...prev, ...(domainToThemesMap[domain] || [])]);
+    }
+  };
+
+  const toggleTheme = (theme: string, domain: string) => {
+    if (selectedThemes.includes(theme)) {
+      // Remove theme
+      setSelectedThemes(prev => prev.filter(t => t !== theme));
+      // Check if we should remove the domain
+      const domainThemes = domainToThemesMap[domain] || [];
+      const remainingThemes = domainThemes.filter(t => selectedThemes.includes(t) && t !== theme);
+      if (remainingThemes.length === 0) {
+        setSelectedDomains(prev => prev.filter(d => d !== domain));
+      }
+    } else {
+      // Add theme
+      setSelectedThemes(prev => [...prev, theme]);
+      // Check if we should add the domain
+      const domainThemes = domainToThemesMap[domain] || [];
+      const allThemesSelected = domainThemes.every(t => selectedThemes.includes(t) || t === theme);
+      if (allThemesSelected && !selectedDomains.includes(domain)) {
+        setSelectedDomains(prev => [...prev, domain]);
+      }
+    }
+  };
+
+  const clearAllFilters = () => {
+    setSelectedDomains([]);
+    setSelectedThemes([]);
+  };
+
   if (!trial) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -518,7 +654,7 @@ export default function AnnotatePage() {
       </header>
 
       <div className="container mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_480px] gap-6">
           {/* Video Player with Controls */}
           <div>
             <Card>
@@ -1124,62 +1260,200 @@ export default function AnnotatePage() {
                           <div className="text-muted-foreground text-sm">No issues found in AI analysis.</div>
                         </div>
                       ) : (
-                        aiAnalysis.issues?.map((issue, index) => {
-                          const issueTimestamp = parseAITimestamp(issue.timestamp);
-                          const severityColor =
-                            issue.severity.toLowerCase() === 'critical' ? 'bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-900/20 dark:text-red-300 dark:hover:bg-red-900/30' :
-                            issue.severity.toLowerCase() === 'high' ? 'bg-orange-100 text-orange-800 hover:bg-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:hover:bg-orange-900/30' :
-                            issue.severity.toLowerCase() === 'medium' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300 dark:hover:bg-yellow-900/30' :
-                            'bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-900/20 dark:text-gray-300 dark:hover:bg-gray-900/30';
+                        <>
+                          {/* Compact Filter UI */}
+                          <div className="flex items-center gap-2 mb-3">
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="outline" size="sm" className="h-8 gap-2">
+                                  <Filter className="h-3.5 w-3.5" />
+                                  Filter
+                                  {selectedThemes.length > 0 && (
+                                    <Badge variant="secondary" className="ml-1 h-5 px-1 text-xs">
+                                      {selectedThemes.length}
+                                    </Badge>
+                                  )}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-80 p-3" align="start">
+                                <div className="space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <h4 className="text-sm font-medium">Filter Issues</h4>
+                                    {selectedThemes.length > 0 && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={clearAllFilters}
+                                        className="h-6 px-2 text-xs"
+                                      >
+                                        Clear
+                                      </Button>
+                                    )}
+                                  </div>
 
-                          return (
-                            <div
-                              key={index}
-                              className="p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
-                              onClick={() => seekTo(issueTimestamp)}
-                            >
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <Badge variant="outline" className="text-xs font-mono">
-                                    {issue.timestamp}
+                                  <div className="space-y-1.5 max-h-96 overflow-y-auto">
+                                    {Object.keys(domainToThemesMap).map(domain => {
+                                      const domainThemes = domainToThemesMap[domain];
+                                      const issuesInDomain = aiAnalysis.issues?.filter(issue =>
+                                        domainThemes.includes(issue.theme)
+                                      ).length || 0;
+
+                                      if (issuesInDomain === 0) return null;
+
+                                      const isDomainSelected = selectedDomains.includes(domain);
+
+                                      return (
+                                        <div key={domain} className="border rounded p-1.5">
+                                          <label className="flex items-center gap-1.5 cursor-pointer">
+                                            <input
+                                              type="checkbox"
+                                              checked={isDomainSelected}
+                                              onChange={() => toggleDomain(domain)}
+                                              className="rounded border-gray-300 h-3.5 w-3.5"
+                                            />
+                                            <span className="text-xs font-medium flex-1">{domain}</span>
+                                            <Badge variant="secondary" className="h-4 px-1 text-[10px]">
+                                              {issuesInDomain}
+                                            </Badge>
+                                          </label>
+
+                                          {isDomainSelected && (
+                                            <div className="ml-5 mt-1 space-y-0.5 pt-1 border-t">
+                                              {domainThemes.map(theme => {
+                                                const issuesWithTheme = aiAnalysis.issues?.filter(
+                                                  issue => issue.theme === theme
+                                                ).length || 0;
+                                                if (issuesWithTheme === 0) return null;
+
+                                                return (
+                                                  <label key={theme} className="flex items-center gap-1.5 cursor-pointer py-0.5">
+                                                    <input
+                                                      type="checkbox"
+                                                      checked={selectedThemes.includes(theme)}
+                                                      onChange={() => toggleTheme(theme, domain)}
+                                                      className="rounded border-gray-300 h-3 w-3"
+                                                    />
+                                                    <span className="text-[11px] text-muted-foreground flex-1">
+                                                      {theme}
+                                                    </span>
+                                                    <span className="text-[10px] text-muted-foreground">
+                                                      {issuesWithTheme}
+                                                    </span>
+                                                  </label>
+                                                );
+                                              })}
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+
+                          {/* Active Filter Chips */}
+                          {selectedThemes.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mb-3 pb-3 border-b">
+                              {selectedThemes.map(theme => {
+                                const domain = getDomainForTheme(theme);
+                                return (
+                                  <Badge
+                                    key={theme}
+                                    variant="secondary"
+                                    className="h-6 px-2 text-xs gap-1 cursor-pointer hover:bg-secondary/80"
+                                    onClick={() => toggleTheme(theme, domain)}
+                                  >
+                                    {theme}
+                                    <X className="h-3 w-3" />
                                   </Badge>
-                                  <Badge variant="outline" className="text-xs">
-                                    {issue.speaker}
-                                  </Badge>
-                                  <Badge className={`text-xs ${severityColor}`}>
-                                    {issue.severity}
-                                  </Badge>
-                                </div>
-                              </div>
-
-                              <div className="mb-2">
-                                <div className="text-sm font-semibold text-primary">{issue.theme}</div>
-                              </div>
-
-                              <div className="space-y-2 text-sm">
-                                <div>
-                                  <span className="font-medium text-muted-foreground">Quote: </span>
-                                  <span className="italic">&quot;{issue.quote}&quot;</span>
-                                </div>
-
-                                <div>
-                                  <span className="font-medium text-muted-foreground">Context: </span>
-                                  <span>{issue.context}</span>
-                                </div>
-
-                                <div>
-                                  <span className="font-medium text-muted-foreground">Issue: </span>
-                                  <span>{issue.justification}</span>
-                                </div>
-
-                                <div className="pt-2 border-t">
-                                  <span className="font-medium text-green-600 dark:text-green-400">Suggested Alternative: </span>
-                                  <span className="text-green-700 dark:text-green-300">{issue.alternative}</span>
-                                </div>
-                              </div>
+                                );
+                              })}
                             </div>
-                          );
-                        })
+                          )}
+
+                          {/* Issues List */}
+                          {(() => {
+                            // Filter issues based on selected themes
+                            const filteredIssues = selectedThemes.length > 0
+                              ? aiAnalysis.issues?.filter(issue => selectedThemes.includes(issue.theme))
+                              : aiAnalysis.issues;
+
+                            if (!filteredIssues || filteredIssues.length === 0) {
+                              return (
+                                <div className="flex items-center justify-center py-8">
+                                  <div className="text-muted-foreground text-sm">No issues match the selected filters.</div>
+                                </div>
+                              );
+                            }
+
+                            return filteredIssues.map((issue, index) => {
+                            const issueTimestamp = parseAITimestamp(issue.timestamp);
+                            const severityColor =
+                              issue.severity.toLowerCase() === 'critical' ? 'bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-900/20 dark:text-red-300 dark:hover:bg-red-900/30' :
+                              issue.severity.toLowerCase() === 'high' ? 'bg-orange-100 text-orange-800 hover:bg-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:hover:bg-orange-900/30' :
+                              issue.severity.toLowerCase() === 'medium' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300 dark:hover:bg-yellow-900/30' :
+                              'bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-900/20 dark:text-gray-300 dark:hover:bg-gray-900/30';
+
+                            const domain = getDomainForTheme(issue.theme);
+
+                            return (
+                              <div
+                                key={index}
+                                className="p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                                onClick={() => seekTo(issueTimestamp)}
+                              >
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <Badge variant="outline" className="text-xs font-mono">
+                                      {issue.timestamp}
+                                    </Badge>
+                                    <Badge variant="outline" className="text-xs">
+                                      {issue.speaker}
+                                    </Badge>
+                                    <Badge className={`text-xs ${severityColor}`}>
+                                      {issue.severity}
+                                    </Badge>
+                                    {issue.analysisPass && (
+                                      <Badge variant="secondary" className="text-xs">
+                                        Pass {issue.analysisPass}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="mb-2">
+                                  <div className="text-xs text-muted-foreground mb-1">{domain}</div>
+                                  <div className="text-sm font-semibold text-primary">{issue.theme}</div>
+                                </div>
+
+                                <div className="space-y-2 text-sm">
+                                  <div>
+                                    <span className="font-medium text-muted-foreground">Quote: </span>
+                                    <span className="italic">&quot;{issue.quote}&quot;</span>
+                                  </div>
+
+                                  <div>
+                                    <span className="font-medium text-muted-foreground">Context: </span>
+                                    <span>{issue.context}</span>
+                                  </div>
+
+                                  <div>
+                                    <span className="font-medium text-muted-foreground">Issue: </span>
+                                    <span>{issue.justification}</span>
+                                  </div>
+
+                                  <div className="pt-2 border-t">
+                                    <span className="font-medium text-green-600 dark:text-green-400">Suggested Alternative: </span>
+                                    <span className="text-green-700 dark:text-green-300">{issue.alternative}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          });
+                          })()}
+                        </>
                       )}
                     </>
                   )}
