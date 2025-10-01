@@ -44,9 +44,31 @@ export async function GET(
       // Create a ReadableStream from the Node.js stream
       const stream = new ReadableStream({
         start(controller) {
-          file.on('data', (chunk) => controller.enqueue(chunk));
-          file.on('end', () => controller.close());
-          file.on('error', (error) => controller.error(error));
+          file.on('data', (chunk) => {
+            try {
+              controller.enqueue(chunk);
+            } catch (error) {
+              // Controller might be closed due to cancellation
+              file.destroy();
+            }
+          });
+          file.on('end', () => {
+            try {
+              controller.close();
+            } catch {
+              // Already closed
+            }
+          });
+          file.on('error', (error) => {
+            try {
+              controller.error(error);
+            } catch {
+              // Controller already closed
+            }
+          });
+        },
+        cancel() {
+          file.destroy();
         },
       });
 
